@@ -205,7 +205,8 @@ function initModals() {
             const totalItemsCard = e.target.closest('[data-card-type="total-items"]');
             if (totalItemsCard) {
                 if (detailedItemsData.length > 0) {
-                    populateDetailsModal(detailedItemsData, { type: 'summary', status: 'TOTAL' });
+                    const filteredItems = filterDetailedItems({ type: 'summary', status: 'TOTAL' });
+                    populateDetailsModal(filteredItems, { type: 'summary', status: 'TOTAL' }, 'items');
                     itemDetailsModal.show();
                 } else {
                     alert("Detailed item data not loaded yet.");
