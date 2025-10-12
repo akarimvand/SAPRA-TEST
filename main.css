@@ -351,7 +351,8 @@ body {
 }
 
 .gradient-form-a, .gradient-form-b, .gradient-form-c, .gradient-form-d, .gradient-total-forms {
-    padding: 0.75rem !important; /* کاهش padding برای کارت‌های رنگی */
+    padding: 0.5rem !important; /* کاهش بیشتر padding برای یکسان کردن ارتفاع */
+    min-height: 100px !important; /* تنظیم min-height برای یکسان کردن با کارت Completed */
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform;
     position: relative;
