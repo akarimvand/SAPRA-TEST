@@ -266,7 +266,7 @@ body {
 /* ===== SUMMARY CARDS ===== */
 .summary-card {
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
-    min-height: 140px; /* کاهش ارتفاع مینیمم کارت */
+    min-height: 100px; /* کاهش بیشتر ارتفاع مینیمم کارت */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -282,34 +282,34 @@ body {
 }
 
 .summary-card .card-body {
-    padding: 0.75rem 1.25rem; /* Reduced vertical padding */
+    padding: 0.5rem 1rem; /* کاهش بیشتر padding */
     position: relative;
     z-index: 2;
 }
 
 .summary-card .card-title-custom {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 600;
     letter-spacing: 0.5px;
     text-transform: uppercase;
     opacity: 0.9;
-    margin-bottom: 0.25rem; /* Reduced margin */
+    margin-bottom: 0.15rem; /* کاهش بیشتر margin */
 }
 
 .summary-card .count-display {
-    font-size: 2rem; /* کاهش اندازه فونت */
+    font-size: 1.8rem; /* کاهش بیشتر اندازه فونت */
     font-weight: 700;
-    line-height: 1.2; /* کاهش فاصله خطوط */
-    margin: 0.25rem 0; /* Reduced margin */
+    line-height: 1.1; /* کاهش بیشتر فاصله خطوط */
+    margin: 0.15rem 0; /* کاهش بیشتر margin */
 }
 
 /* تغییر موقعیت آیکون به بالا سمت راست */
 .summary-card .icon-wrapper {
     position: absolute;
-    top: 1rem; /* بالا سمت راست */
-    right: 1rem;
-    width: 40px; /* کوچک‌تر شده */
-    height: 40px;
+    top: 0.5rem; /* کاهش top */
+    right: 0.75rem; /* کاهش right */
+    width: 35px; /* کوچک‌تر شده */
+    height: 35px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -351,7 +351,7 @@ body {
 }
 
 .gradient-form-a, .gradient-form-b, .gradient-form-c, .gradient-form-d, .gradient-total-forms {
-    padding: 1rem !important;
+    padding: 0.75rem !important; /* کاهش padding برای کارت‌های رنگی */
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform;
     position: relative;
