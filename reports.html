@@ -521,7 +521,9 @@
           fill: false,
           tension: 0.3,
           animation: {
-            delay: index * 500
+            delay: index * 300,
+            duration: 1500,
+            easing: 'easeOutBack'
           }
         };
       });
@@ -536,8 +538,9 @@
           responsive: true,
           maintainAspectRatio: false,
           animation: {
-            duration: 500,
-            easing: 'easeOutBounce'
+            duration: 2000,
+            easing: 'easeOutElastic',
+            delay: 500
           },
           plugins: {
             legend: { display: false },
