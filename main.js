@@ -68,32 +68,35 @@ const ICONS = {
         let itemDetailsModal; // Added variable for item details modal instance
         let loadingModalInstance;
 
-        // --- DOM Elements ---
-        const DOMElements = {
-            sidebar: document.getElementById('sidebar'),
-            sidebarToggle: document.getElementById('sidebarToggle'),
-            sidebarOverlay: document.getElementById('sidebarOverlay'),
-            mainContent: document.getElementById('mainContent'),
-            treeView: document.getElementById('treeView'),
-            searchInput: document.getElementById('searchInput'),
-            totalItemsCounterCard: document.getElementById('totalItemsCounterCard'),
-            summaryCardsRow1: document.getElementById('summaryCardsRow1'),
-            summaryCardsRow2: document.getElementById('summaryCardsRow2'),
-            chartTabs: document.getElementById('chartTabs'),
-            overviewChartsContainer: document.getElementById('overviewChartsContainer'),
-            disciplineChartsContainer: document.getElementById('disciplineChartsContainer'),
-            dataTableHead: document.getElementById('dataTableHead'),
-            dataTableBody: document.getElementById('dataTableBody'),
-            exportExcelBtn: document.getElementById('exportExcelBtn'),
-            errorMessage: document.getElementById('errorMessage'),
-            reportsBtn: document.getElementById('reportsBtn'),
-            downloadAllBtn: document.getElementById('downloadAllBtn'),
-            exitBtn: document.getElementById('exitBtn'),
-        };
+        // --- DOM Elements (defined after DOM load) ---
+        let DOMElements;
 
 
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            DOMElements = {
+                sidebar: document.getElementById('sidebar'),
+                sidebarToggle: document.getElementById('sidebarToggle'),
+                sidebarOverlay: document.getElementById('sidebarOverlay'),
+                mainContent: document.getElementById('mainContent'),
+                treeView: document.getElementById('treeView'),
+                searchInput: document.getElementById('searchInput'),
+                totalItemsCounterCard: document.getElementById('totalItemsCounterCard'),
+                summaryCardsRow1: document.getElementById('summaryCardsRow1'),
+                summaryCardsRow2: document.getElementById('summaryCardsRow2'),
+                chartTabs: document.getElementById('chartTabs'),
+                overviewChartsContainer: document.getElementById('overviewChartsContainer'),
+                disciplineChartsContainer: document.getElementById('disciplineChartsContainer'),
+                dataTableHead: document.getElementById('dataTableHead'),
+                dataTableBody: document.getElementById('dataTableBody'),
+                exportExcelBtn: document.getElementById('exportExcelBtn'),
+                errorMessage: document.getElementById('errorMessage'),
+                reportsBtn: document.getElementById('reportsBtn'),
+                downloadAllBtn: document.getElementById('downloadAllBtn'),
+                exitBtn: document.getElementById('exitBtn'),
+            };
+
             initEventListeners();
             initBootstrapTabs();
             initModals(); // Initialize modals
