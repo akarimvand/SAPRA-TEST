@@ -153,6 +153,7 @@ function initModals() {
             DOMElements.exportExcelBtn.addEventListener('click', handleExport);
             DOMElements.exitBtn.addEventListener('click', () => { window.location.href = 'index.html'; });
             DOMElements.downloadAllBtn.addEventListener('click', handleDownloadAll);
+            DOMElements.refreshDataBtn.addEventListener('click', () => { window.location.reload(true); });
 
             // New listener for when a chart tab is shown, ensuring charts render only when visible.
             DOMElements.chartTabs.addEventListener('shown.bs.tab', function (event) {
