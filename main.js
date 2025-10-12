@@ -48,13 +48,8 @@ const ICONS = {
         let detailedItemsData = []; // Added global variable for detailed items data
         let punchItemsData = []; // Added global variable for punch items data
         let holdPointItemsData = []; // Added global variable for hold point items data
-        let activitiesData = []; // Added global variable for activities data
-
-        // Lazy loading flags
-        let detailedItemsLoaded = false;
-        let punchItemsLoaded = false;
-        let holdPointItemsLoaded = false;
-        let activitiesLoaded = false;
+        let activitiesData = []; // Added global variable for activities data (loaded on demand)
+        let hosData = []; // Full HOS data for modal
         let subsystemStatusMap = {}; // To store the status from HOS.CSV
         let displayedItemsInModal = []; // Added to store items currently shown in the modal
         let currentModalDataType = null; // 'items' or 'punch' or 'hold' or 'activities'
@@ -68,35 +63,32 @@ const ICONS = {
         let itemDetailsModal; // Added variable for item details modal instance
         let loadingModalInstance;
 
-        // --- DOM Elements (defined after DOM load) ---
-        let DOMElements;
+        // --- DOM Elements ---
+        const DOMElements = {
+            sidebar: document.getElementById('sidebar'),
+            sidebarToggle: document.getElementById('sidebarToggle'),
+            sidebarOverlay: document.getElementById('sidebarOverlay'),
+            mainContent: document.getElementById('mainContent'),
+            treeView: document.getElementById('treeView'),
+            searchInput: document.getElementById('searchInput'),
+            totalItemsCounter: document.getElementById('totalItemsCounter'),
+            summaryCardsRow1: document.getElementById('summaryCardsRow1'),
+            summaryCardsRow2: document.getElementById('summaryCardsRow2'),
+            chartTabs: document.getElementById('chartTabs'),
+            overviewChartsContainer: document.getElementById('overviewChartsContainer'),
+            disciplineChartsContainer: document.getElementById('disciplineChartsContainer'),
+            dataTableHead: document.getElementById('dataTableHead'),
+            dataTableBody: document.getElementById('dataTableBody'),
+            exportExcelBtn: document.getElementById('exportExcelBtn'),
+            errorMessage: document.getElementById('errorMessage'),
+            reportsBtn: document.getElementById('reportsBtn'),
+            downloadAllBtn: document.getElementById('downloadAllBtn'),
+            exitBtn: document.getElementById('exitBtn'),
+        };
 
 
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM Elements ---
-            DOMElements = {
-                sidebar: document.getElementById('sidebar'),
-                sidebarToggle: document.getElementById('sidebarToggle'),
-                sidebarOverlay: document.getElementById('sidebarOverlay'),
-                mainContent: document.getElementById('mainContent'),
-                treeView: document.getElementById('treeView'),
-                searchInput: document.getElementById('searchInput'),
-                totalItemsCounterCard: document.getElementById('totalItemsCounterCard'),
-                summaryCardsRow1: document.getElementById('summaryCardsRow1'),
-                summaryCardsRow2: document.getElementById('summaryCardsRow2'),
-                chartTabs: document.getElementById('chartTabs'),
-                overviewChartsContainer: document.getElementById('overviewChartsContainer'),
-                disciplineChartsContainer: document.getElementById('disciplineChartsContainer'),
-                dataTableHead: document.getElementById('dataTableHead'),
-                dataTableBody: document.getElementById('dataTableBody'),
-                exportExcelBtn: document.getElementById('exportExcelBtn'),
-                errorMessage: document.getElementById('errorMessage'),
-                reportsBtn: document.getElementById('reportsBtn'),
-                downloadAllBtn: document.getElementById('downloadAllBtn'),
-                exitBtn: document.getElementById('exitBtn'),
-            };
-
             initEventListeners();
             initBootstrapTabs();
             initModals(); // Initialize modals
@@ -174,56 +166,17 @@ function initModals() {
         // Add click listeners to summary cards and data table for showing details
         document.addEventListener('click', handleDetailsClick);
 
-        // Add click listener for the total items card
-        const totalItemsCard = document.getElementById('totalItemsCard');
-        if (totalItemsCard) {
-            totalItemsCard.style.cursor = 'pointer';
-            totalItemsCard.addEventListener('click', async () => {
-                await loadDetailedItems();
-                if (detailedItemsData.length > 0) {
-                    const filteredItems = filterDetailedItems({ type: 'summary', status: 'TOTAL' });
-                    populateDetailsModal(filteredItems, { type: 'summary', status: 'TOTAL' });
-                    itemDetailsModal.show();
-                } else {
-                    alert("Detailed item data not loaded yet.");
-                }
-            });
-        }
-
-        // Add click listener for the total forms card
-        const totalFormsCard = document.getElementById('totalFormsCard');
-        if (totalFormsCard) {
-            totalFormsCard.style.cursor = 'pointer';
-            totalFormsCard.addEventListener('click', () => {
-                // Load and show all HOS data
-                fetch('https://raw.githubusercontent.com/akarimvand/SAPRA2/refs/heads/main/dbcsv/HOS.CSV')
-                    .then(response => response.text())
-                    .then(csvText => {
-                        Papa.parse(csvText, {
-                            header: true,
-                            skipEmptyLines: true,
-                            complete: (results) => {
-                                const modalData = results.data.map(row => ({
-                                    subsystem: row.Sub_System,
-                                    subsystemName: row.Subsystem_Name,
-                                    formA: row.FormA || '',
-                                    formB: row.FormB || '',
-                                    formC: row.FormC || '',
-                                    formD: row.FormD || ''
-                                }));
-                                populateHOSDetailsModal(modalData, 'TOTAL_FORMS', 'forms');
-                                itemDetailsModal.show();
-                            },
-                            error: (err) => {
-                                console.error("PapaParse error for HOS CSV:", err);
-                            }
-                        });
-                    })
-                    .catch(error => {
-                        console.error("Error loading HOS CSV:", error);
-                    });
-            });
-        }
+        // Add click listener for the total items counter badge
+        DOMElements.totalItemsCounter.closest('span.badge').style.cursor = 'pointer'; // Indicate clickable
+        DOMElements.totalItemsCounter.closest('span.badge').addEventListener('click', () => {
+            if (detailedItemsData.length > 0) {
+                const filteredItems = filterDetailedItems({ type: 'summary', status: 'TOTAL' });
+                populateDetailsModal(filteredItems, { type: 'summary', status: 'TOTAL' });
+                itemDetailsModal.show();
+            } else {
+                alert("Detailed item data not loaded yet.");
+            }
+        });
 
         // Add click listeners for form cards
         document.addEventListener('click', function(e) {
@@ -299,13 +252,20 @@ function filterModalTable() {
     }
 }
 
-        async function handleDetailsClick(e) {
+        function handleDetailsClick(e) {
             let target = e.target;
             let statusType = null;
             let filterContext = null; // { type: 'summary', status: 'DONE' } or { type: 'table', rowData: {...}, status: 'PUNCH' } or { type: 'table', rowData: {...}, status: 'HOLD' }
              let dataType = null; // 'items' or 'punch' or 'hold'
 
-    // Check if click is on a summary card count
+            // Check if click is on the total items counter badge
+             if (target.closest('span.badge') === DOMElements.totalItemsCounter.closest('span.badge')) {
+                 statusType = 'TOTAL';
+                 filterContext = { type: 'summary', status: statusType };
+                 dataType = 'items'; // Total items counter always shows general items
+             }
+
+            // Check if click is on a summary card count (excluding total items counter)
             if (!filterContext) {
                 const summaryCard = target.closest('.summary-card'); // Find the closest summary card
                 if (summaryCard) {
@@ -378,20 +338,33 @@ function filterModalTable() {
 
             if (filterContext) {
                  let dataToDisplay = [];
+                 let dataLoaded = false;
 
                  if (dataType === 'items') {
-                     await loadDetailedItems();
-                     dataToDisplay = filterDetailedItems(filterContext);
+                     if (detailedItemsData.length > 0) {
+                          dataToDisplay = filterDetailedItems(filterContext);
+                          dataLoaded = true;
+                     }
                  } else if (dataType === 'punch') {
-                     await loadPunchItems();
-                     dataToDisplay = filterPunchItems(filterContext);
+                     if (punchItemsData.length > 0) {
+                         dataToDisplay = filterPunchItems(filterContext);
+                         dataLoaded = true;
+                     }
                  } else if (dataType === 'hold') { // Handle 'hold' data type
-                     await loadHoldPointItems();
-                     dataToDisplay = filterHoldItems(filterContext);
+                     if (holdPointItemsData.length > 0) {
+                         dataToDisplay = filterHoldItems(filterContext);
+                         dataLoaded = true;
+                     }
                  }
 
-                 populateDetailsModal(dataToDisplay, filterContext, dataType);
-                 itemDetailsModal.show();
+                 if (dataLoaded) {
+                    populateDetailsModal(dataToDisplay, filterContext, dataType);
+                     itemDetailsModal.show();
+                 } else {
+                    // Data loaded was true, but filteredData was empty. Populate modal with empty data.
+                    populateDetailsModal([], filterContext, dataType);
+                    itemDetailsModal.show();
+                 }
              }
         }
 
@@ -780,12 +753,16 @@ function filterDetailedItems(context) {
             };
 
             try {
-                const [hosResults, dataResults] = await Promise.all([
+                const [hosResults, dataResults, itemsResults, punchResults, holdResults] = await Promise.all([
                     parseCsv('dbcsv/HOS.CSV'),
-                    parseCsv(CSV_URL)
+                    parseCsv(CSV_URL),
+                    parseCsv(ITEMS_CSV_URL),
+                    parseCsv(PUNCH_CSV_URL),
+                    parseCsv(HOLD_POINT_CSV_URL)
                 ]);
 
                 // --- Process HOS Data First ---
+                hosData = hosResults.data; // Store full data for modal
                 window.totalForms = hosResults.data.length;
                 window.formCounts.formA = hosResults.data.filter(row => row.FormA && row.FormA.trim() !== '').length;
                 window.formCounts.formB = hosResults.data.filter(row => row.FormB && row.FormB.trim() !== '').length;
@@ -831,7 +808,31 @@ function filterDetailedItems(context) {
                 });
                 processedData = { systemMap, subSystemMap, allRawData: dataResults.data };
 
+                // --- Process Other Detailed Data ---
+                detailedItemsData = itemsResults.data.map(item => ({
+                    subsystem: item.SD_Sub_System?.trim() || '', discipline: item.Discipline_Name?.trim() || '',
+                    tagNo: item.ITEM_Tag_NO?.trim() || '', typeCode: item.ITEM_Type_Code?.trim() || '',
+                    description: item.ITEM_Description?.trim() || '', status: item.ITEM_Status?.trim() || ''
+                }));
+                console.log("Detailed items data loaded:", detailedItemsData.length, "items");
 
+                punchItemsData = punchResults.data.map(item => ({
+                    SD_Sub_System: item.SD_Sub_System?.trim() || '', Discipline_Name: item.Discipline_Name?.trim() || '',
+                    ITEM_Tag_NO: item.ITEM_Tag_NO?.trim() || '', ITEM_Type_Code: item.ITEM_Type_Code?.trim() || '',
+                    PL_Punch_Category: item.PL_Punch_Category?.trim() || '', PL_Punch_Description: item.PL_Punch_Description?.trim() || '',
+                    PL_No: item.PL_No?.trim() || ''
+                }));
+                console.log("Punch items data loaded:", punchItemsData.length, "items");
+
+                holdPointItemsData = holdResults.data.map(item => ({
+                    subsystem: item.SD_SUB_SYSTEM?.trim() || '', discipline: item.Discipline_Name?.trim() || '',
+                    tagNo: item.ITEM_Tag_NO?.trim() || '', typeCode: item.ITEM_Type_Code?.trim() || '',
+                    hpPriority: item.HP_Priority?.trim() || '', hpDescription: item.HP_Description?.trim() || '',
+                    hpLocation: item.HP_Location?.trim() || ''
+                }));
+                console.log("Hold point items data loaded:", holdPointItemsData.length, "items");
+
+                // Activities data will be loaded on demand
 
                 // --- Initial Render ---
                 updateView();
@@ -842,92 +843,6 @@ function filterDetailedItems(context) {
                 console.error("Data loading failed:", e);
             } finally {
                 // The modal is now hidden in updateView() to ensure it's hidden only after rendering.
-            }
-        }
-
-        // --- Lazy Loading Functions ---
-        async function loadDetailedItems() {
-            if (detailedItemsLoaded) return;
-            loadingModalInstance.show();
-            try {
-                const itemsResults = await parseCsv(ITEMS_CSV_URL);
-                detailedItemsData = itemsResults.data.map(item => ({
-                    subsystem: item.SD_Sub_System?.trim() || '', discipline: item.Discipline_Name?.trim() || '',
-                    tagNo: item.ITEM_Tag_NO?.trim() || '', typeCode: item.ITEM_Type_Code?.trim() || '',
-                    description: item.ITEM_Description?.trim() || '', status: item.ITEM_Status?.trim() || ''
-                }));
-                detailedItemsLoaded = true;
-                console.log("Detailed items data loaded:", detailedItemsData.length, "items");
-            } catch (e) {
-                console.error("Error loading detailed items:", e);
-                DOMElements.errorMessage.textContent = `Error loading detailed items: ${e.message}`;
-                DOMElements.errorMessage.style.display = 'block';
-            } finally {
-                loadingModalInstance.hide();
-            }
-        }
-
-        async function loadPunchItems() {
-            if (punchItemsLoaded) return;
-            loadingModalInstance.show();
-            try {
-                const punchResults = await parseCsv(PUNCH_CSV_URL);
-                punchItemsData = punchResults.data.map(item => ({
-                    SD_Sub_System: item.SD_Sub_System?.trim() || '', Discipline_Name: item.Discipline_Name?.trim() || '',
-                    ITEM_Tag_NO: item.ITEM_Tag_NO?.trim() || '', ITEM_Type_Code: item.ITEM_Type_Code?.trim() || '',
-                    PL_Punch_Category: item.PL_Punch_Category?.trim() || '', PL_Punch_Description: item.PL_Punch_Description?.trim() || '',
-                    PL_No: item.PL_No?.trim() || ''
-                }));
-                punchItemsLoaded = true;
-                console.log("Punch items data loaded:", punchItemsData.length, "items");
-            } catch (e) {
-                console.error("Error loading punch items:", e);
-                DOMElements.errorMessage.textContent = `Error loading punch items: ${e.message}`;
-                DOMElements.errorMessage.style.display = 'block';
-            } finally {
-                loadingModalInstance.hide();
-            }
-        }
-
-        async function loadHoldPointItems() {
-            if (holdPointItemsLoaded) return;
-            loadingModalInstance.show();
-            try {
-                const holdResults = await parseCsv(HOLD_POINT_CSV_URL);
-                holdPointItemsData = holdResults.data.map(item => ({
-                    subsystem: item.SD_SUB_SYSTEM?.trim() || '', discipline: item.Discipline_Name?.trim() || '',
-                    tagNo: item.ITEM_Tag_NO?.trim() || '', typeCode: item.ITEM_Type_Code?.trim() || '',
-                    hpPriority: item.HP_Priority?.trim() || '', hpDescription: item.HP_Description?.trim() || '',
-                    hpLocation: item.HP_Location?.trim() || ''
-                }));
-                holdPointItemsLoaded = true;
-                console.log("Hold point items data loaded:", holdPointItemsData.length, "items");
-            } catch (e) {
-                console.error("Error loading hold point items:", e);
-                DOMElements.errorMessage.textContent = `Error loading hold point items: ${e.message}`;
-                DOMElements.errorMessage.style.display = 'block';
-            } finally {
-                loadingModalInstance.hide();
-            }
-        }
-
-        async function loadActivities() {
-            if (activitiesLoaded) return;
-            loadingModalInstance.show();
-            try {
-                const activitiesResults = await parseCsv(ACTIVITIES_CSV_URL);
-                activitiesData = activitiesResults.data.map(item => ({
-                    Tag_No: item.Tag_No?.trim() || '', Form_Title: item.Form_Title?.trim() || '',
-                    Done: item.Done?.trim() || ''
-                }));
-                activitiesLoaded = true;
-                console.log("Activities data loaded:", activitiesData.length, "items");
-            } catch (e) {
-                console.error("Error loading activities:", e);
-                DOMElements.errorMessage.textContent = `Error loading activities: ${e.message}`;
-                DOMElements.errorMessage.style.display = 'block';
-            } finally {
-                loadingModalInstance.hide();
             }
         }
 
@@ -1078,7 +993,7 @@ function filterDetailedItems(context) {
         function updateView() {
             aggregatedStats = _aggregateStatsForView(selectedView, processedData.systemMap, processedData.subSystemMap);
 
-            DOMElements.totalItemsCounterCard.textContent = aggregatedStats.totalItems.toLocaleString();
+            DOMElements.totalItemsCounter.textContent = aggregatedStats.totalItems.toLocaleString();
 
             renderSummaryCards();
             renderOverviewCharts(); // Render the initial overview chart
@@ -1093,21 +1008,6 @@ function filterDetailedItems(context) {
         function renderSummaryCards() {
             let row1HTML = '';
             let row2HTML = '';
-
-            // Total Items Card
-            row1HTML += `
-                <div class="col">
-                    <section class="card summary-card shadow-sm bg-white" id="totalItemsCard" aria-labelledby="summary-title-total-items">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 id="summary-title-total-items" class="card-title-custom fw-medium text-muted">Total Items</h6>
-                                <span class="icon-wrapper bg-primary-subtle text-primary" aria-hidden="true">${ICONS.FileEarmarkText}</span>
-                            </div>
-                            <h3 class="count-display text-primary mb-1" id="totalItemsCounterCard">${aggregatedStats.totalItems.toLocaleString()}</h3>
-                            <small class="text-muted">Total number of items</small>
-                        </div>
-                    </section>
-                </div>`;
 
             const originalCardsData = [
                 { title: 'Completed', count: aggregatedStats.done, total: aggregatedStats.totalItems, baseClass: 'bg-white', icon: ICONS.CheckCircle, iconWrapperBgClass: 'bg-success-subtle', iconColorClass: 'text-success', progressColor: 'success', countColor: 'text-success', titleColor: 'text-muted' },
@@ -1159,21 +1059,6 @@ function filterDetailedItems(context) {
                     </section>
                 </div>`;
             DOMElements.summaryCardsRow1.innerHTML = row1HTML;
-
-            // New Total Forms Card
-            row2HTML += `
-                <div class="col">
-                    <section class="card summary-card shadow-sm bg-primary text-white" id="totalFormsCard" aria-labelledby="summary-title-total-forms">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 id="summary-title-total-forms" class="card-title-custom">Total Forms</h6>
-                                <span class="icon-wrapper" style="background-color: rgba(255,255,255,0.2);" aria-hidden="true">${ICONS.FileEarmarkText}</span>
-                            </div>
-                            <h3 class="count-display mb-1">${window.totalForms.toLocaleString()}</h3>
-                            <small class="d-block mt-2 text-white">Total number of forms from HOS data</small>
-                        </div>
-                    </section>
-                </div>`;
 
             const formCardsData = [
                 { title: 'FORM A', count: window.formCounts.formA, gradientClass: 'gradient-form-a animated-gradient', icon: ICONS.FileEarmarkText, desc: 'Submitted to Client for Mechanical Completion Approval' },
@@ -1569,8 +1454,7 @@ chartInstances.overview = new Chart(overviewCtx, {
             }
         }
 
-        async function loadActivitiesForTag(tagNo) {
-            await loadActivities();
+        function loadActivitiesForTag(tagNo) {
             document.getElementById('activitiesTagTitle').textContent = `فعالیت‌ها برای: ${tagNo}`;
             const filtered = activitiesData.filter(a => a.Tag_No === tagNo);
             const list = document.getElementById('activitiesList');
