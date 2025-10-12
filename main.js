@@ -181,6 +181,41 @@ function initModals() {
             });
         }
 
+        // Add click listener for the total forms card
+        const totalFormsCard = document.getElementById('totalFormsCard');
+        if (totalFormsCard) {
+            totalFormsCard.style.cursor = 'pointer';
+            totalFormsCard.addEventListener('click', () => {
+                // Load and show all HOS data
+                fetch('https://raw.githubusercontent.com/akarimvand/SAPRA2/refs/heads/main/dbcsv/HOS.CSV')
+                    .then(response => response.text())
+                    .then(csvText => {
+                        Papa.parse(csvText, {
+                            header: true,
+                            skipEmptyLines: true,
+                            complete: (results) => {
+                                const modalData = results.data.map(row => ({
+                                    subsystem: row.Sub_System,
+                                    subsystemName: row.Subsystem_Name,
+                                    formA: row.FormA || '',
+                                    formB: row.FormB || '',
+                                    formC: row.FormC || '',
+                                    formD: row.FormD || ''
+                                }));
+                                populateHOSDetailsModal(modalData, 'TOTAL_FORMS', 'forms');
+                                itemDetailsModal.show();
+                            },
+                            error: (err) => {
+                                console.error("PapaParse error for HOS CSV:", err);
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.error("Error loading HOS CSV:", error);
+                    });
+            });
+        }
+
         // Add click listeners for form cards
         document.addEventListener('click', function(e) {
             // Check if click is on a form card count
@@ -1010,6 +1045,21 @@ function filterDetailedItems(context) {
             let row1HTML = '';
             let row2HTML = '';
 
+            // Total Items Card
+            row1HTML += `
+                <div class="col">
+                    <section class="card summary-card shadow-sm bg-white" id="totalItemsCard" aria-labelledby="summary-title-total-items">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 id="summary-title-total-items" class="card-title-custom fw-medium text-muted">Total Items</h6>
+                                <span class="icon-wrapper bg-primary-subtle text-primary" aria-hidden="true">${ICONS.FileEarmarkText}</span>
+                            </div>
+                            <h3 class="count-display text-primary mb-1" id="totalItemsCounterCard">${aggregatedStats.totalItems.toLocaleString()}</h3>
+                            <small class="text-muted">Total number of items</small>
+                        </div>
+                    </section>
+                </div>`;
+
             const originalCardsData = [
                 { title: 'Completed', count: aggregatedStats.done, total: aggregatedStats.totalItems, baseClass: 'bg-white', icon: ICONS.CheckCircle, iconWrapperBgClass: 'bg-success-subtle', iconColorClass: 'text-success', progressColor: 'success', countColor: 'text-success', titleColor: 'text-muted' },
                 { title: 'Pending', count: aggregatedStats.pending, total: aggregatedStats.totalItems, baseClass: 'bg-white', icon: ICONS.Clock, iconWrapperBgClass: 'bg-warning-subtle', iconColorClass: 'text-warning', progressColor: 'warning', countColor: 'text-warning', titleColor: 'text-muted' },
@@ -1064,7 +1114,7 @@ function filterDetailedItems(context) {
             // New Total Forms Card
             row2HTML += `
                 <div class="col">
-                    <section class="card summary-card shadow-sm bg-primary text-white" aria-labelledby="summary-title-total-forms">
+                    <section class="card summary-card shadow-sm bg-primary text-white" id="totalFormsCard" aria-labelledby="summary-title-total-forms">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h6 id="summary-title-total-forms" class="card-title-custom">Total Forms</h6>
