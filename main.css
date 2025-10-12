@@ -345,7 +345,12 @@ body {
     color: white;
 }
 
-.gradient-form-a, .gradient-form-b, .gradient-form-c, .gradient-form-d {
+.gradient-total-forms {
+    background: linear-gradient(135deg, #2C3E50, #34495E);
+    color: white;
+}
+
+.gradient-form-a, .gradient-form-b, .gradient-form-c, .gradient-form-d, .gradient-total-forms {
     padding: 1rem !important;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform;
@@ -353,7 +358,7 @@ body {
     overflow: hidden;
 }
 
-.gradient-form-a:before, .gradient-form-b:before, .gradient-form-c:before, .gradient-form-d:before {
+.gradient-form-a:before, .gradient-form-b:before, .gradient-form-c:before, .gradient-form-d:before, .gradient-total-forms:before {
     content: '';
     position: absolute;
     top: -50%;
@@ -366,7 +371,7 @@ body {
     pointer-events: none;
 }
 
-.gradient-form-a:hover:before, .gradient-form-b:hover:before, .gradient-form-c:hover:before, .gradient-form-d:hover:before {
+.gradient-form-a:hover:before, .gradient-form-b:hover:before, .gradient-form-c:hover:before, .gradient-form-d:hover:before, .gradient-total-forms:hover:before {
     opacity: 1;
     animation: pulse 1.5s ease-out;
 }
@@ -377,7 +382,7 @@ body {
     100% { transform: scale(0.8); opacity: 0.7; }
 }
 
-.gradient-form-a:hover, .gradient-form-b:hover, .gradient-form-c:hover, .gradient-form-d:hover {
+.gradient-form-a:hover, .gradient-form-b:hover, .gradient-form-c:hover, .gradient-form-d:hover, .gradient-total-forms:hover {
     transform: perspective(800px) translateY(-8px) scale(1.05) rotateX(5deg);
     box-shadow: 0 20px 40px rgba(0,0,0,0.25) !important;
     border-radius: 16px;
