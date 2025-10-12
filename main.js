@@ -1101,7 +1101,7 @@ function filterDetailedItems(context) {
 
             // New Total Forms card (similar to form cards, placed to the left of FORM A)
             const totalFormsCount = window.totalForms || 0;
-            const totalFormsCard = { title: 'TOTAL FORMS', count: totalFormsCount, gradientClass: 'gradient-total-forms animated-gradient', icon: ICONS.FileEarmarkText, desc: 'Total Subsystems Defined in Project' };
+            const totalFormsCard = { title: 'TOTAL FORMS', count: totalFormsCount, gradientClass: 'gradient-total-forms animated-gradient', icon: ICONS.FileEarmarkText, desc: 'The total number of subsystems that require handover' };
             row2HTML += `
                 <div class="col">
                     <section class="card summary-card shadow-sm ${totalFormsCard.gradientClass}" aria-labelledby="summary-title-${totalFormsCard.title.toLowerCase().replace(' ','-')}" data-card-type="total-forms">
