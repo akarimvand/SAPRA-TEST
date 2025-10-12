@@ -49,6 +49,12 @@ const ICONS = {
         let punchItemsData = []; // Added global variable for punch items data
         let holdPointItemsData = []; // Added global variable for hold point items data
         let activitiesData = []; // Added global variable for activities data
+
+        // Lazy loading flags
+        let detailedItemsLoaded = false;
+        let punchItemsLoaded = false;
+        let holdPointItemsLoaded = false;
+        let activitiesLoaded = false;
         let subsystemStatusMap = {}; // To store the status from HOS.CSV
         let displayedItemsInModal = []; // Added to store items currently shown in the modal
         let currentModalDataType = null; // 'items' or 'punch' or 'hold' or 'activities'
@@ -170,7 +176,8 @@ function initModals() {
         const totalItemsCard = document.getElementById('totalItemsCard');
         if (totalItemsCard) {
             totalItemsCard.style.cursor = 'pointer';
-            totalItemsCard.addEventListener('click', () => {
+            totalItemsCard.addEventListener('click', async () => {
+                await loadDetailedItems();
                 if (detailedItemsData.length > 0) {
                     const filteredItems = filterDetailedItems({ type: 'summary', status: 'TOTAL' });
                     populateDetailsModal(filteredItems, { type: 'summary', status: 'TOTAL' });
@@ -290,7 +297,7 @@ function filterModalTable() {
     }
 }
 
-        function handleDetailsClick(e) {
+        async function handleDetailsClick(e) {
             let target = e.target;
             let statusType = null;
             let filterContext = null; // { type: 'summary', status: 'DONE' } or { type: 'table', rowData: {...}, status: 'PUNCH' } or { type: 'table', rowData: {...}, status: 'HOLD' }
@@ -369,33 +376,20 @@ function filterModalTable() {
 
             if (filterContext) {
                  let dataToDisplay = [];
-                 let dataLoaded = false;
 
                  if (dataType === 'items') {
-                     if (detailedItemsData.length > 0) {
-                          dataToDisplay = filterDetailedItems(filterContext);
-                          dataLoaded = true;
-                     }
+                     await loadDetailedItems();
+                     dataToDisplay = filterDetailedItems(filterContext);
                  } else if (dataType === 'punch') {
-                     if (punchItemsData.length > 0) {
-                         dataToDisplay = filterPunchItems(filterContext);
-                         dataLoaded = true;
-                     }
+                     await loadPunchItems();
+                     dataToDisplay = filterPunchItems(filterContext);
                  } else if (dataType === 'hold') { // Handle 'hold' data type
-                     if (holdPointItemsData.length > 0) {
-                         dataToDisplay = filterHoldItems(filterContext);
-                         dataLoaded = true;
-                     }
+                     await loadHoldPointItems();
+                     dataToDisplay = filterHoldItems(filterContext);
                  }
 
-                 if (dataLoaded) {
-                    populateDetailsModal(dataToDisplay, filterContext, dataType);
-                     itemDetailsModal.show();
-                 } else {
-                    // Data loaded was true, but filteredData was empty. Populate modal with empty data.
-                    populateDetailsModal([], filterContext, dataType);
-                    itemDetailsModal.show();
-                 }
+                 populateDetailsModal(dataToDisplay, filterContext, dataType);
+                 itemDetailsModal.show();
              }
         }
 
@@ -784,13 +778,9 @@ function filterDetailedItems(context) {
             };
 
             try {
-                const [hosResults, dataResults, itemsResults, punchResults, holdResults, activitiesResults] = await Promise.all([
+                const [hosResults, dataResults] = await Promise.all([
                     parseCsv('dbcsv/HOS.CSV'),
-                    parseCsv(CSV_URL),
-                    parseCsv(ITEMS_CSV_URL),
-                    parseCsv(PUNCH_CSV_URL),
-                    parseCsv(HOLD_POINT_CSV_URL),
-                    parseCsv(ACTIVITIES_CSV_URL)
+                    parseCsv(CSV_URL)
                 ]);
 
                 // --- Process HOS Data First ---
@@ -839,35 +829,7 @@ function filterDetailedItems(context) {
                 });
                 processedData = { systemMap, subSystemMap, allRawData: dataResults.data };
 
-                // --- Process Other Detailed Data ---
-                detailedItemsData = itemsResults.data.map(item => ({
-                    subsystem: item.SD_Sub_System?.trim() || '', discipline: item.Discipline_Name?.trim() || '',
-                    tagNo: item.ITEM_Tag_NO?.trim() || '', typeCode: item.ITEM_Type_Code?.trim() || '',
-                    description: item.ITEM_Description?.trim() || '', status: item.ITEM_Status?.trim() || ''
-                }));
-                console.log("Detailed items data loaded:", detailedItemsData.length, "items");
 
-                punchItemsData = punchResults.data.map(item => ({
-                    SD_Sub_System: item.SD_Sub_System?.trim() || '', Discipline_Name: item.Discipline_Name?.trim() || '',
-                    ITEM_Tag_NO: item.ITEM_Tag_NO?.trim() || '', ITEM_Type_Code: item.ITEM_Type_Code?.trim() || '',
-                    PL_Punch_Category: item.PL_Punch_Category?.trim() || '', PL_Punch_Description: item.PL_Punch_Description?.trim() || '',
-                    PL_No: item.PL_No?.trim() || ''
-                }));
-                console.log("Punch items data loaded:", punchItemsData.length, "items");
-
-                holdPointItemsData = holdResults.data.map(item => ({
-                    subsystem: item.SD_SUB_SYSTEM?.trim() || '', discipline: item.Discipline_Name?.trim() || '',
-                    tagNo: item.ITEM_Tag_NO?.trim() || '', typeCode: item.ITEM_Type_Code?.trim() || '',
-                    hpPriority: item.HP_Priority?.trim() || '', hpDescription: item.HP_Description?.trim() || '',
-                    hpLocation: item.HP_Location?.trim() || ''
-                }));
-                console.log("Hold point items data loaded:", holdPointItemsData.length, "items");
-
-                activitiesData = activitiesResults.data.map(item => ({
-                    Tag_No: item.Tag_No?.trim() || '', Form_Title: item.Form_Title?.trim() || '',
-                    Done: item.Done?.trim() || ''
-                }));
-                console.log("Activities data loaded:", activitiesData.length, "items");
 
                 // --- Initial Render ---
                 updateView();
@@ -878,6 +840,92 @@ function filterDetailedItems(context) {
                 console.error("Data loading failed:", e);
             } finally {
                 // The modal is now hidden in updateView() to ensure it's hidden only after rendering.
+            }
+        }
+
+        // --- Lazy Loading Functions ---
+        async function loadDetailedItems() {
+            if (detailedItemsLoaded) return;
+            loadingModalInstance.show();
+            try {
+                const itemsResults = await parseCsv(ITEMS_CSV_URL);
+                detailedItemsData = itemsResults.data.map(item => ({
+                    subsystem: item.SD_Sub_System?.trim() || '', discipline: item.Discipline_Name?.trim() || '',
+                    tagNo: item.ITEM_Tag_NO?.trim() || '', typeCode: item.ITEM_Type_Code?.trim() || '',
+                    description: item.ITEM_Description?.trim() || '', status: item.ITEM_Status?.trim() || ''
+                }));
+                detailedItemsLoaded = true;
+                console.log("Detailed items data loaded:", detailedItemsData.length, "items");
+            } catch (e) {
+                console.error("Error loading detailed items:", e);
+                DOMElements.errorMessage.textContent = `Error loading detailed items: ${e.message}`;
+                DOMElements.errorMessage.style.display = 'block';
+            } finally {
+                loadingModalInstance.hide();
+            }
+        }
+
+        async function loadPunchItems() {
+            if (punchItemsLoaded) return;
+            loadingModalInstance.show();
+            try {
+                const punchResults = await parseCsv(PUNCH_CSV_URL);
+                punchItemsData = punchResults.data.map(item => ({
+                    SD_Sub_System: item.SD_Sub_System?.trim() || '', Discipline_Name: item.Discipline_Name?.trim() || '',
+                    ITEM_Tag_NO: item.ITEM_Tag_NO?.trim() || '', ITEM_Type_Code: item.ITEM_Type_Code?.trim() || '',
+                    PL_Punch_Category: item.PL_Punch_Category?.trim() || '', PL_Punch_Description: item.PL_Punch_Description?.trim() || '',
+                    PL_No: item.PL_No?.trim() || ''
+                }));
+                punchItemsLoaded = true;
+                console.log("Punch items data loaded:", punchItemsData.length, "items");
+            } catch (e) {
+                console.error("Error loading punch items:", e);
+                DOMElements.errorMessage.textContent = `Error loading punch items: ${e.message}`;
+                DOMElements.errorMessage.style.display = 'block';
+            } finally {
+                loadingModalInstance.hide();
+            }
+        }
+
+        async function loadHoldPointItems() {
+            if (holdPointItemsLoaded) return;
+            loadingModalInstance.show();
+            try {
+                const holdResults = await parseCsv(HOLD_POINT_CSV_URL);
+                holdPointItemsData = holdResults.data.map(item => ({
+                    subsystem: item.SD_SUB_SYSTEM?.trim() || '', discipline: item.Discipline_Name?.trim() || '',
+                    tagNo: item.ITEM_Tag_NO?.trim() || '', typeCode: item.ITEM_Type_Code?.trim() || '',
+                    hpPriority: item.HP_Priority?.trim() || '', hpDescription: item.HP_Description?.trim() || '',
+                    hpLocation: item.HP_Location?.trim() || ''
+                }));
+                holdPointItemsLoaded = true;
+                console.log("Hold point items data loaded:", holdPointItemsData.length, "items");
+            } catch (e) {
+                console.error("Error loading hold point items:", e);
+                DOMElements.errorMessage.textContent = `Error loading hold point items: ${e.message}`;
+                DOMElements.errorMessage.style.display = 'block';
+            } finally {
+                loadingModalInstance.hide();
+            }
+        }
+
+        async function loadActivities() {
+            if (activitiesLoaded) return;
+            loadingModalInstance.show();
+            try {
+                const activitiesResults = await parseCsv(ACTIVITIES_CSV_URL);
+                activitiesData = activitiesResults.data.map(item => ({
+                    Tag_No: item.Tag_No?.trim() || '', Form_Title: item.Form_Title?.trim() || '',
+                    Done: item.Done?.trim() || ''
+                }));
+                activitiesLoaded = true;
+                console.log("Activities data loaded:", activitiesData.length, "items");
+            } catch (e) {
+                console.error("Error loading activities:", e);
+                DOMElements.errorMessage.textContent = `Error loading activities: ${e.message}`;
+                DOMElements.errorMessage.style.display = 'block';
+            } finally {
+                loadingModalInstance.hide();
             }
         }
 
@@ -1520,7 +1568,8 @@ chartInstances.overview = new Chart(overviewCtx, {
             }
         }
 
-        function loadActivitiesForTag(tagNo) {
+        async function loadActivitiesForTag(tagNo) {
+            await loadActivities();
             document.getElementById('activitiesTagTitle').textContent = `فعالیت‌ها برای: ${tagNo}`;
             const filtered = activitiesData.filter(a => a.Tag_No === tagNo);
             const list = document.getElementById('activitiesList');
