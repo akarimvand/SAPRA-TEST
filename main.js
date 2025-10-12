@@ -1033,7 +1033,7 @@ function filterDetailedItems(context) {
             let row2HTML = '';
 
             // New Total Items card (left of Completed)
-            const totalItemsCard = { title: 'Total Items', count: aggregatedStats.totalItems, baseClass: 'bg-white', icon: ICONS.Collection, iconWrapperBgClass: 'bg-primary-subtle', iconColorClass: 'text-primary', countColor: 'text-primary', titleColor: 'text-muted' };
+            const totalItemsCard = { title: 'Total Items of Selected Subsystems', count: aggregatedStats.totalItems, baseClass: 'bg-white', icon: ICONS.Collection, iconWrapperBgClass: 'bg-primary-subtle', iconColorClass: 'text-primary', countColor: 'text-primary', titleColor: 'text-muted' };
             row1HTML += `
                 <div class="col">
                     <section class="card summary-card shadow-sm ${totalItemsCard.baseClass}" aria-labelledby="summary-title-${totalItemsCard.title.toLowerCase().replace(' ','-')}" data-card-type="total-items">
@@ -1101,7 +1101,7 @@ function filterDetailedItems(context) {
 
             // New Total Forms card (similar to form cards, placed to the left of FORM A)
             const totalFormsCount = window.totalForms || 0;
-            const totalFormsCard = { title: 'TOTAL FORMS', count: totalFormsCount, gradientClass: 'gradient-total-forms animated-gradient', icon: ICONS.FileEarmarkText, desc: 'The total number of subsystems that require handover' };
+            const totalFormsCard = { title: 'TOTAL FORMS', count: totalFormsCount, gradientClass: 'gradient-total-forms animated-gradient', icon: ICONS.FileEarmarkText, desc: 'Total Subsystems Defined in Project' };
             row2HTML += `
                 <div class="col">
                     <section class="card summary-card shadow-sm ${totalFormsCard.gradientClass}" aria-labelledby="summary-title-${totalFormsCard.title.toLowerCase().replace(' ','-')}" data-card-type="total-forms">
