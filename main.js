@@ -205,8 +205,7 @@ function initModals() {
             const totalItemsCard = e.target.closest('[data-card-type="total-items"]');
             if (totalItemsCard) {
                 if (detailedItemsData.length > 0) {
-                    const filteredItems = filterDetailedItems({ type: 'summary', status: 'TOTAL' });
-                    populateDetailsModal(filteredItems, { type: 'summary', status: 'TOTAL' });
+                    populateDetailsModal(detailedItemsData, { type: 'summary', status: 'TOTAL' });
                     itemDetailsModal.show();
                 } else {
                     alert("Detailed item data not loaded yet.");
@@ -1099,6 +1098,23 @@ function filterDetailedItems(context) {
                 </div>`;
             DOMElements.summaryCardsRow1.innerHTML = row1HTML;
 
+            // New Total Forms card (similar to form cards, placed to the left of FORM A)
+            const totalFormsCount = window.totalForms || 0;
+            const totalFormsCard = { title: 'TOTAL FORMS', count: totalFormsCount, gradientClass: 'gradient-total-forms animated-gradient', icon: ICONS.FileEarmarkText, desc: 'Total Subsystems with Form Data' };
+            row2HTML += `
+                <div class="col">
+                    <section class="card summary-card shadow-sm ${totalFormsCard.gradientClass}" aria-labelledby="summary-title-${totalFormsCard.title.toLowerCase().replace(' ','-')}" data-card-type="total-forms">
+                        <div class="card-body text-white">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 id="summary-title-${totalFormsCard.title.toLowerCase().replace(' ','-')}" class="card-title-custom">${totalFormsCard.title}</h6>
+                                <span class="icon-wrapper" style="background-color: rgba(0,0,0,0.2);" aria-hidden="true">${totalFormsCard.icon}</span>
+                            </div>
+                            <h3 class="count-display mb-1">${totalFormsCard.count.toLocaleString()}</h3>
+                            <small class="d-block mt-2 text-white" style="color: #fff !important;">${totalFormsCard.desc}</small>
+                        </div>
+                    </section>
+                </div>`;
+
             const formCardsData = [
                 { title: 'FORM A', count: window.formCounts.formA, gradientClass: 'gradient-form-a animated-gradient', icon: ICONS.FileEarmarkText, desc: 'Submitted to Client for Mechanical Completion Approval' },
                 { title: 'FORM B', count: window.formCounts.formB, gradientClass: 'gradient-form-b animated-gradient', icon: ICONS.FileEarmarkCheck, desc: 'Returned by Client with Pre-Commissioning Punches' },
@@ -1120,23 +1136,6 @@ function filterDetailedItems(context) {
                         </section>
                     </div>`;
             });
-
-            // New Total Forms card (similar to form cards)
-            const totalFormsCount = window.totalForms || 0;
-            const totalFormsCard = { title: 'TOTAL FORMS', count: totalFormsCount, gradientClass: 'gradient-total-forms animated-gradient', icon: ICONS.FileEarmarkText, desc: 'Total Subsystems with Form Data' };
-            row2HTML += `
-                <div class="col">
-                    <section class="card summary-card shadow-sm ${totalFormsCard.gradientClass}" aria-labelledby="summary-title-${totalFormsCard.title.toLowerCase().replace(' ','-')}" data-card-type="total-forms">
-                        <div class="card-body text-white">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 id="summary-title-${totalFormsCard.title.toLowerCase().replace(' ','-')}" class="card-title-custom">${totalFormsCard.title}</h6>
-                                <span class="icon-wrapper" style="background-color: rgba(0,0,0,0.2);" aria-hidden="true">${totalFormsCard.icon}</span>
-                            </div>
-                            <h3 class="count-display mb-1">${totalFormsCard.count.toLocaleString()}</h3>
-                            <small class="d-block mt-2 text-white" style="color: #fff !important;">${totalFormsCard.desc}</small>
-                        </div>
-                    </section>
-                </div>`;
 
             DOMElements.summaryCardsRow2.innerHTML = row2HTML;
         }
