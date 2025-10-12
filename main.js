@@ -76,7 +76,6 @@ const ICONS = {
             mainContent: document.getElementById('mainContent'),
             treeView: document.getElementById('treeView'),
             searchInput: document.getElementById('searchInput'),
-            totalItemsCounter: document.getElementById('totalItemsCounter'),
             totalItemsCounterCard: document.getElementById('totalItemsCounterCard'),
             summaryCardsRow1: document.getElementById('summaryCardsRow1'),
             summaryCardsRow2: document.getElementById('summaryCardsRow2'),
@@ -1076,7 +1075,6 @@ function filterDetailedItems(context) {
         function updateView() {
             aggregatedStats = _aggregateStatsForView(selectedView, processedData.systemMap, processedData.subSystemMap);
 
-            if (DOMElements.totalItemsCounter) DOMElements.totalItemsCounter.textContent = aggregatedStats.totalItems.toLocaleString();
             DOMElements.totalItemsCounterCard.textContent = aggregatedStats.totalItems.toLocaleString();
 
             renderSummaryCards();
