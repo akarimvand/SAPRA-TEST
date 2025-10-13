@@ -11,7 +11,7 @@ window.formCounts = {
 const GITHUB_BASE_URL = "https://raw.githubusercontent.com/akarimvand/SAPRA2/refs/heads/main/dbcsv/";
 
 const CSV_URL = GITHUB_BASE_URL + "DATA.CSV";
-const ITEMS_CSV_URL = GITHUB_BASE_URL + "ITEMS.CSV";
+// ITEMS.CSV will be loaded separately in background
 const PUNCH_CSV_URL = GITHUB_BASE_URL + "PUNCH.CSV";
 const HOLD_POINT_CSV_URL = GITHUB_BASE_URL + "HOLD_POINT.CSV";
 const ACTIVITIES_CSV_URL = GITHUB_BASE_URL + "ACTIVITES.CSV"; // Preserving original filename
@@ -777,39 +777,6 @@ function filterDetailedItems(context) {
             loadingModalInstance.show();
             DOMElements.errorMessage.style.display = 'none';
 
-            // Simple timeout to check if loading modal is still open after 6 seconds
-            const loadingTimeout = setTimeout(() => {
-                console.log('Timeout triggered - checking modal state');
-                const modalEl = document.getElementById('loadingModal');
-                console.log('Modal element:', modalEl);
-                console.log('Modal classes:', modalEl ? modalEl.className : 'null');
-                console.log('Modal has show class:', modalEl ? modalEl.classList.contains('show') : 'null');
-                
-                if (modalEl && modalEl.classList.contains('show')) {
-                    console.error('Loading timeout - 6 seconds exceeded, showing alert');
-                    loadingModalInstance.hide();
-                    
-                    // Test simple alert first
-                    alert('خطا در ارتباط با سرور - لطفاً Ctrl+F5 را فشار دهید');
-                    
-                    // Also try SweetAlert
-                    if (typeof Swal !== 'undefined') {
-                        console.log('SweetAlert available, showing message');
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'خطا در ارتباط با سرور',
-                            text: 'امکان بارگذاری اطلاعات وجود ندارد. لطفاً Ctrl+F5 را فشار دهید تا صفحه مجدداً بارگذاری شود.',
-                            confirmButtonText: 'متوجه شدم',
-                            confirmButtonColor: '#d33'
-                        });
-                    } else {
-                        console.log('SweetAlert not available');
-                    }
-                } else {
-                    console.log('Modal not found or not showing');
-                }
-            }, 6000); // 6 second timeout
-
             const parseCsv = async (url) => {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
@@ -825,10 +792,10 @@ function filterDetailedItems(context) {
             };
 
             try {
-                const [hosResults, dataResults, itemsResults, punchResults, holdResults] = await Promise.all([
+                // Load essential files first (fast loading)
+                const [hosResults, dataResults, punchResults, holdResults] = await Promise.all([
                     parseCsv('dbcsv/HOS.CSV'),
                     parseCsv(CSV_URL),
-                    parseCsv(ITEMS_CSV_URL),
                     parseCsv(PUNCH_CSV_URL),
                     parseCsv(HOLD_POINT_CSV_URL)
                 ]);
@@ -883,12 +850,9 @@ function filterDetailedItems(context) {
                 processedData = { systemMap, subSystemMap, allRawData: dataResults.data };
 
                 // --- Process Other Detailed Data ---
-                detailedItemsData = itemsResults.data.map(item => ({
-                    subsystem: item.SD_Sub_System?.trim() || '', discipline: item.Discipline_Name?.trim() || '',
-                    tagNo: item.ITEM_Tag_NO?.trim() || '', typeCode: item.ITEM_Type_Code?.trim() || '',
-                    description: item.ITEM_Description?.trim() || '', status: item.ITEM_Status?.trim() || ''
-                }));
-                console.log("Detailed items data loaded:", detailedItemsData.length, "items");
+                // ITEMS.CSV will be loaded in background
+                detailedItemsData = [];
+                console.log("Main data loaded, ITEMS.CSV loading in background...");
 
                 punchItemsData = punchResults.data.map(item => ({
                     SD_Sub_System: item.SD_Sub_System?.trim() || '', Discipline_Name: item.Discipline_Name?.trim() || '',
@@ -910,12 +874,15 @@ function filterDetailedItems(context) {
 
                 // --- Initial Render ---
                 updateView();
+                
+                // Load heavy ITEMS.CSV in background after main UI is ready
+                setTimeout(() => {
+                    loadItemsInBackground();
+                }, 100);
 
             } catch (e) {
-                clearTimeout(loadingTimeout);
                 console.error("Data loading failed:", e);
             } finally {
-                clearTimeout(loadingTimeout);
                 setTimeout(() => {
                     if (loadingModalInstance) {
                         try {
@@ -933,6 +900,37 @@ function filterDetailedItems(context) {
                         }
                     }
                 }, 100);
+            }
+        }
+
+        // Background loading of heavy ITEMS.CSV
+        async function loadItemsInBackground() {
+            try {
+                console.log('Loading ITEMS.CSV in background...');
+                const response = await fetch('https://raw.githubusercontent.com/akarimvand/SAPRA-TEST/refs/heads/main/dbcsv/ITEMS.CSV');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const csvText = await response.text();
+                
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        detailedItemsData = results.data.map(item => ({
+                            subsystem: item.SD_Sub_System?.trim() || '', 
+                            discipline: item.Discipline_Name?.trim() || '',
+                            tagNo: item.ITEM_Tag_NO?.trim() || '', 
+                            typeCode: item.ITEM_Type_Code?.trim() || '',
+                            description: item.ITEM_Description?.trim() || '', 
+                            status: item.ITEM_Status?.trim() || ''
+                        }));
+                        console.log("ITEMS.CSV loaded in background:", detailedItemsData.length, "items");
+                    },
+                    error: (err) => {
+                        console.error("Background ITEMS.CSV loading failed:", err);
+                    }
+                });
+            } catch (error) {
+                console.error("Background ITEMS.CSV loading failed:", error);
             }
         }
 
