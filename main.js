@@ -801,7 +801,26 @@ function filterDetailedItems(context) {
                 }
             };
 
-            const parseCsv = parseCsvWithRetry;
+            const parseCsv = async (url) => {
+                // Add cache buster to prevent browser caching issues
+                const cacheBuster = '?t=' + Date.now();
+                const response = await fetch(url + cacheBuster, {
+                    cache: 'no-cache',
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
+                const csvText = await response.text();
+                return new Promise((resolve, reject) => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: resolve,
+                        error: reject
+                    });
+                });
+            };
 
             // Add overall timeout for the entire loading process
             const loadingTimeout = setTimeout(() => {
