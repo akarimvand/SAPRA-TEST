@@ -93,6 +93,15 @@ const ICONS = {
             initEventListeners();
             initBootstrapTabs();
             initModals(); // Initialize modals
+            
+            // Test SweetAlert first
+            if (typeof Swal === 'undefined') {
+                console.error('SweetAlert2 not loaded!');
+                alert('SweetAlert2 library failed to load');
+            } else {
+                console.log('SweetAlert2 loaded successfully');
+            }
+            
             loadAndProcessData();
             DOMElements.sidebarToggle.setAttribute('aria-expanded', 'false');
         });
@@ -804,18 +813,25 @@ function filterDetailedItems(context) {
             const parseCsv = parseCsvWithRetry;
 
             // Add overall timeout for the entire loading process
+            let timeoutTriggered = false;
             const loadingTimeout = setTimeout(() => {
-                console.error('Loading timeout - forcing modal hide');
+                timeoutTriggered = true;
+                loadingTimeout._destroyed = true;
+                console.error('Loading timeout - 10 seconds exceeded');
                 if (loadingModalInstance) {
                     loadingModalInstance.hide();
                     // Show Persian SweetAlert error message
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'خطا در ارتباط با سرور',
-                        text: 'امکان بارگذاری اطلاعات وجود ندارد. لطفاً Ctrl+F5 را فشار دهید تا صفحه مجدداً بارگذاری شود.',
-                        confirmButtonText: 'متوجه شدم',
-                        confirmButtonColor: '#d33'
-                    });
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'خطا در ارتباط با سرور',
+                            text: 'امکان بارگذاری اطلاعات وجود ندارد. لطفاً Ctrl+F5 را فشار دهید تا صفحه مجدداً بارگذاری شود.',
+                            confirmButtonText: 'متوجه شدم',
+                            confirmButtonColor: '#d33'
+                        });
+                    } else {
+                        alert('خطا در ارتباط با سرور - لطفاً Ctrl+F5 را فشار دهید');
+                    }
                 }
             }, 10000); // 10 second overall timeout
 
@@ -908,35 +924,44 @@ function filterDetailedItems(context) {
 
             } catch (e) {
                 clearTimeout(loadingTimeout);
+                loadingTimeout._destroyed = true;
                 console.error("Data loading failed:", e);
+                if (loadingModalInstance) {
+                    loadingModalInstance.hide();
+                }
                 // Show Persian SweetAlert error message
-                Swal.fire({
-                    icon: 'error',
-                    title: 'خطا در ارتباط با سرور',
-                    text: 'امکان بارگذاری اطلاعات وجود ندارد. لطفاً Ctrl+F5 را فشار دهید تا صفحه مجدداً بارگذاری شود.',
-                    confirmButtonText: 'متوجه شدم',
-                    confirmButtonColor: '#d33'
-                });
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'خطا در ارتباط با سرور',
+                        text: 'امکان بارگذاری اطلاعات وجود ندارد. لطفاً Ctrl+F5 را فشار دهید تا صفحه مجدداً بارگذاری شود.',
+                        confirmButtonText: 'متوجه شدم',
+                        confirmButtonColor: '#d33'
+                    });
+                } else {
+                    alert('خطا در ارتباط با سرور - لطفاً Ctrl+F5 را فشار دهید');
+                }
             } finally {
-                // Force hide loading modal with delay to ensure it's processed
-                setTimeout(() => {
-                    if (loadingModalInstance) {
-                        try {
-                            loadingModalInstance.hide();
-                        } catch (modalError) {
-                            console.warn('Modal hide error:', modalError);
-                            // Force hide by manipulating DOM directly
-                            const modalEl = document.getElementById('loadingModal');
-                            if (modalEl) {
-                                modalEl.style.display = 'none';
-                                modalEl.classList.remove('show');
-                                document.body.classList.remove('modal-open');
-                                const backdrop = document.querySelector('.modal-backdrop');
-                                if (backdrop) backdrop.remove();
+                // Only hide modal if loading was successful (timeout not triggered)
+                if (!loadingTimeout._destroyed) {
+                    setTimeout(() => {
+                        if (loadingModalInstance) {
+                            try {
+                                loadingModalInstance.hide();
+                            } catch (modalError) {
+                                console.warn('Modal hide error:', modalError);
+                                const modalEl = document.getElementById('loadingModal');
+                                if (modalEl) {
+                                    modalEl.style.display = 'none';
+                                    modalEl.classList.remove('show');
+                                    document.body.classList.remove('modal-open');
+                                    const backdrop = document.querySelector('.modal-backdrop');
+                                    if (backdrop) backdrop.remove();
+                                }
                             }
                         }
-                    }
-                }, 100);
+                    }, 100);
+                }
             }
         }
 
