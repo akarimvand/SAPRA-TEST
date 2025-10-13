@@ -280,7 +280,7 @@
 
     <!-- Activities Modal -->
     <div class="modal fade" id="activitiesModal" tabindex="-1" aria-labelledby="activitiesModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable" dir="rtl" lang="fa">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header" style="background: #343a40; color: white; border-bottom: 1px solid #495057;">
                     <h5 class="modal-title" id="activitiesModalLabel"><i class="bi bi-list-task me-2"></i> لیست فعالیت‌ها</h5>
@@ -292,9 +292,9 @@
                         <table class="table table-striped table-hover">
                             <thead class="table-light">
                                 <tr>
-                                    <th>ردیف</th>
-                                    <th>عنوان فرم</th>
-                                    <th>وضعیت</th>
+                                    <th>#</th>
+                                    <th>Form Title</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody id="activitiesList">
@@ -303,7 +303,7 @@
                         </table>
                         <div class="progress-container mt-4">
                             <div class="d-flex justify-content-between mb-2">
-                                <span class="fw-medium">پیشرفت کلی:</span>
+                                <span class="fw-medium">Overall Progress:</span>
                                 <span class="fw-bold text-primary" id="activitiesProgressText">0%</span>
                             </div>
                             <div class="progress" style="height: 12px; border-radius: 6px; overflow: hidden;">
@@ -313,8 +313,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-success" onclick="exportActivitiesToExcel()"><i class="bi bi-file-earmark-excel me-1"></i> خروجی اکسل</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i> بستن</button>
+                    <button type="button" class="btn btn-success" onclick="exportActivitiesToExcel()"><i class="bi bi-file-earmark-excel me-1"></i> Export Excel</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i> Close</button>
                 </div>
             </div>
         </div>

@@ -303,7 +303,7 @@ const ICONS = {
                                     <div class="search-result-title fw-bold text-primary">${result.tagNo}</div>
                                     <div class="search-result-subtitle text-muted small">${result.description}</div>
                                     <div class="small text-secondary">
-                                        <span class="badge bg-light text-dark me-1">${result.subsystem}</span>
+                                        <span class="badge bg-light text-dark me-1 subsystem-badge" data-subsystem="${result.subsystem}" style="cursor: pointer;">${result.subsystem}</span>
                                         <span class="badge bg-light text-dark me-1">${result.discipline}</span>
                                         <span class="badge bg-light text-dark">${result.typeCode}</span>
                                     </div>
@@ -317,9 +317,24 @@ const ICONS = {
                         </div>
                     `).join('');
                     
-                    // Add click handlers
+                    // Add click handlers for items
                     quickSearchResults.querySelectorAll('.search-result-item').forEach(item => {
-                        item.addEventListener('click', () => {
+                        item.addEventListener('click', (e) => {
+                            // Check if clicked on subsystem badge
+                            if (e.target.classList.contains('subsystem-badge')) {
+                                e.stopPropagation();
+                                const subsystemId = e.target.dataset.subsystem;
+                                const subsystemData = processedData.subSystemMap[subsystemId];
+                                
+                                if (subsystemData) {
+                                    quickSearchModal.hide();
+                                    handleNodeSelect('subsystem', subsystemId, subsystemData.title || subsystemId, subsystemData.systemId);
+                                    showToast(`Filtered to subsystem: ${subsystemId}`, 'success');
+                                }
+                                return;
+                            }
+                            
+                            // Default behavior - show activities
                             const tagNo = item.dataset.tagNo;
                             quickSearchModal.hide();
                             
@@ -328,6 +343,18 @@ const ICONS = {
                             activitiesModal.show();
                             
                             showToast(`Showing activities for ${tagNo}`, 'success');
+                        });
+                    });
+                    
+                    // Add hover effect for subsystem badges
+                    quickSearchResults.querySelectorAll('.subsystem-badge').forEach(badge => {
+                        badge.addEventListener('mouseenter', () => {
+                            badge.classList.add('bg-primary', 'text-white');
+                            badge.classList.remove('bg-light', 'text-dark');
+                        });
+                        badge.addEventListener('mouseleave', () => {
+                            badge.classList.remove('bg-primary', 'text-white');
+                            badge.classList.add('bg-light', 'text-dark');
                         });
                     });
                 });
@@ -2105,7 +2132,7 @@ chartInstances.overview = new Chart(overviewCtx, {
             let doneCount = 0;
 
             if (filtered.length === 0) {
-                list.innerHTML = '<tr><td colspan="3" class="no-activities">هیچ فعالیتی برای این Tag No یافت نشد.</td></tr>';
+                list.innerHTML = '<tr><td colspan="3" class="no-activities">No activities found for this Tag No.</td></tr>';
                 document.getElementById('activitiesProgressText').textContent = '0%';
                 document.getElementById('activitiesProgressFill').style.width = '0%';
                 return;
