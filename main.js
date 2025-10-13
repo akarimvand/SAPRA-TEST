@@ -7,14 +7,14 @@ window.formCounts = {
 };
 
 // --- Constants ---
-// ✅ Changed to use GitHub raw URLs to bypass CSP restrictions when running via file://
-const GITHUB_BASE_URL = "https://raw.githubusercontent.com/akarimvand/SAPRA2/refs/heads/main/dbcsv/";
+// Use GitHub Pages URL to avoid CORS issues
+const GITHUB_BASE_URL = "https://akarimvand.github.io/SAPRA2/dbcsv/";
 
 const CSV_URL = GITHUB_BASE_URL + "DATA.CSV";
 const ITEMS_CSV_URL = GITHUB_BASE_URL + "ITEMS.CSV";
 const PUNCH_CSV_URL = GITHUB_BASE_URL + "PUNCH.CSV";
 const HOLD_POINT_CSV_URL = GITHUB_BASE_URL + "HOLD_POINT.CSV";
-const ACTIVITIES_CSV_URL = GITHUB_BASE_URL + "ACTIVITES.CSV"; // Preserving original filename
+const ACTIVITIES_CSV_URL = GITHUB_BASE_URL + "ACTIVITES.CSV";
 
 const COLORS_STATUS_CHARTJS = {
     done: 'rgba(76, 175, 80, 0.8)',    // success
@@ -729,7 +729,7 @@ function filterDetailedItems(context) {
 
         function filterHOSItems(statusType, dataType) {
             // Load HOS.CSV data
-            fetch('https://raw.githubusercontent.com/akarimvand/SAPRA2/refs/heads/main/dbcsv/HOS.CSV')
+            fetch('https://akarimvand.github.io/SAPRA2/dbcsv/HOS.CSV')
                 .then(response => response.text())
                 .then(csvText => {
                     Papa.parse(csvText, {
@@ -842,9 +842,9 @@ function filterDetailedItems(context) {
                         const cacheBuster = '?t=' + Date.now() + '&v=' + Math.random();
                         let finalUrl = url;
                         
-                        // Try local first, then GitHub
+                        // Use GitHub Pages URL
                         if (!url.startsWith('http')) {
-                            finalUrl = url + cacheBuster;
+                            finalUrl = GITHUB_BASE_URL + url.split('/').pop() + cacheBuster;
                         } else {
                             finalUrl = url + cacheBuster;
                         }
@@ -899,11 +899,11 @@ function filterDetailedItems(context) {
                         console.warn(`Attempt ${attempt} failed for ${url}:`, error.message);
                         
                         if (attempt === retries) {
-                            // Last attempt failed, try GitHub URL if we were using local
-                            if (!url.startsWith('http')) {
-                                console.log(`Trying GitHub URL for ${url}`);
-                                const githubUrl = GITHUB_BASE_URL + url.split('/').pop();
-                                return fetchCsvData(githubUrl, 1); // One attempt with GitHub URL
+                            // Last attempt failed, try local files if we were using GitHub
+                            if (url.startsWith('http')) {
+                                console.log(`Trying local files for ${url}`);
+                                const localUrl = 'dbcsv/' + url.split('/').pop();
+                                return fetchCsvData(localUrl, 1);
                             }
                             throw error;
                         }
@@ -1697,7 +1697,7 @@ chartInstances.overview = new Chart(overviewCtx, {
                     'ACTIVITES.CSV', 'DATA.CSV', 'HOLD_POINT.CSV',
                     'HOS.CSV', 'ITEMS.CSV', 'PUNCH.CSV', 'TRANS.CSV'
                 ];
-                const baseUrl = 'https://raw.githubusercontent.com/akarimvand/SAPRA2/refs/heads/main/dbcsv/';
+                const baseUrl = 'https://akarimvand.github.io/SAPRA2/dbcsv/';
 
                 // 2. Fetch files
                 for (let i = 0; i < csvFiles.length; i++) {
