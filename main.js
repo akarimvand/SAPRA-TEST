@@ -102,6 +102,13 @@ const ICONS = {
             
             loadAndProcessData();
             DOMElements.sidebarToggle.setAttribute('aria-expanded', 'false');
+            
+            // Add debug info to console
+            console.log('🚀 SAPRA Application Started');
+            console.log('Debug commands available:');
+            console.log('- checkDataStatus(): Check if data is loaded');
+            console.log('- forceReloadData(): Force reload all data');
+            console.log('- window.processedData: Access main data object');
         });
 
         // Function to activate tabs from iframe
@@ -111,6 +118,56 @@ const ICONS = {
                 const tab = new bootstrap.Tab(tabButton);
                 tab.show();
             }
+        };
+
+        // Debug function to check data loading status
+        window.checkDataStatus = function() {
+            console.log('🔍 Data Loading Status Check:');
+            console.log('processedData:', processedData);
+            console.log('selectedView:', selectedView);
+            console.log('aggregatedStats:', aggregatedStats);
+            console.log('detailedItemsData length:', detailedItemsData.length);
+            console.log('punchItemsData length:', punchItemsData.length);
+            console.log('holdPointItemsData length:', holdPointItemsData.length);
+            console.log('hosData length:', hosData.length);
+            console.log('subsystemStatusMap:', subsystemStatusMap);
+            
+            if (processedData.systemMap && Object.keys(processedData.systemMap).length > 0) {
+                console.log('✅ Main data loaded successfully');
+            } else {
+                console.log('❌ Main data not loaded');
+            }
+            
+            return {
+                mainDataLoaded: Object.keys(processedData.systemMap || {}).length > 0,
+                detailedItemsLoaded: detailedItemsData.length > 0,
+                punchItemsLoaded: punchItemsData.length > 0,
+                holdItemsLoaded: holdPointItemsData.length > 0,
+                hosDataLoaded: hosData.length > 0
+            };
+        };
+
+        // Force reload data function
+        window.forceReloadData = function() {
+            console.log('🔄 Force reloading data...');
+            // Reset all data
+            processedData = { systemMap: {}, subSystemMap: {}, allRawData: [] };
+            detailedItemsData = [];
+            punchItemsData = [];
+            holdPointItemsData = [];
+            hosData = [];
+            subsystemStatusMap = {};
+            
+            // Clear cache and reload
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => {
+                        caches.delete(name);
+                    });
+                });
+            }
+            
+            loadAndProcessData();
         };
 
         function initBootstrapTabs() {
@@ -775,58 +832,86 @@ function filterDetailedItems(context) {
             loadingModalInstance.show();
             DOMElements.errorMessage.style.display = 'none';
 
-            // Timeout wrapper for fetch requests
-            const fetchWithTimeout = (url, timeout = 6000) => {
-                return Promise.race([
-                    fetch(url),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error(`Timeout: ${url}`)), timeout)
-                    )
-                ]);
-            };
-
-            // Retry mechanism
-            const parseCsvWithRetry = async (url, retries = 2) => {
-                for (let i = 0; i <= retries; i++) {
+            // Unified fetch function with cache busting and retry
+            const fetchCsvData = async (url, retries = 3) => {
+                for (let attempt = 1; attempt <= retries; attempt++) {
                     try {
-                        const response = await fetchWithTimeout(url);
-                        if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
+                        console.log(`Loading ${url} (attempt ${attempt}/${retries})`);
+                        
+                        // Add cache buster and use both local and GitHub URLs
+                        const cacheBuster = '?t=' + Date.now() + '&v=' + Math.random();
+                        let finalUrl = url;
+                        
+                        // Try local first, then GitHub
+                        if (!url.startsWith('http')) {
+                            finalUrl = url + cacheBuster;
+                        } else {
+                            finalUrl = url + cacheBuster;
+                        }
+                        
+                        const response = await Promise.race([
+                            fetch(finalUrl, {
+                                method: 'GET',
+                                cache: 'no-store',
+                                headers: {
+                                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                                    'Pragma': 'no-cache',
+                                    'Expires': '0'
+                                }
+                            }),
+                            new Promise((_, reject) => 
+                                setTimeout(() => reject(new Error(`Timeout after 10s: ${url}`)), 10000)
+                            )
+                        ]);
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status} ${response.statusText}: ${url}`);
+                        }
+                        
                         const csvText = await response.text();
+                        
+                        if (!csvText || csvText.trim().length === 0) {
+                            throw new Error(`Empty response from: ${url}`);
+                        }
+                        
                         return new Promise((resolve, reject) => {
                             Papa.parse(csvText, {
                                 header: true,
                                 skipEmptyLines: true,
-                                complete: resolve,
-                                error: reject
+                                complete: (results) => {
+                                    if (results.errors && results.errors.length > 0) {
+                                        console.warn(`Parse warnings for ${url}:`, results.errors);
+                                    }
+                                    if (!results.data || results.data.length === 0) {
+                                        reject(new Error(`No data parsed from: ${url}`));
+                                    } else {
+                                        console.log(`Successfully loaded ${url}: ${results.data.length} rows`);
+                                        resolve(results);
+                                    }
+                                },
+                                error: (error) => {
+                                    reject(new Error(`Parse error for ${url}: ${error.message}`));
+                                }
                             });
                         });
+                        
                     } catch (error) {
-                        console.warn(`Attempt ${i + 1} failed for ${url}:`, error.message);
-                        if (i === retries) throw error;
-                        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Progressive delay
+                        console.warn(`Attempt ${attempt} failed for ${url}:`, error.message);
+                        
+                        if (attempt === retries) {
+                            // Last attempt failed, try GitHub URL if we were using local
+                            if (!url.startsWith('http')) {
+                                console.log(`Trying GitHub URL for ${url}`);
+                                const githubUrl = GITHUB_BASE_URL + url.split('/').pop();
+                                return fetchCsvData(githubUrl, 1); // One attempt with GitHub URL
+                            }
+                            throw error;
+                        }
+                        
+                        // Wait before retry
+                        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
                     }
                 }
-            };
-
-            const parseCsv = async (url) => {
-                // Add cache buster to prevent browser caching issues
-                const cacheBuster = '?t=' + Date.now();
-                const response = await fetch(url + cacheBuster, {
-                    cache: 'no-cache',
-                    headers: {
-                        'Cache-Control': 'no-cache'
-                    }
-                });
-                if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
-                const csvText = await response.text();
-                return new Promise((resolve, reject) => {
-                    Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: resolve,
-                        error: reject
-                    });
-                });
             };
 
             // Add overall timeout for the entire loading process
@@ -834,18 +919,20 @@ function filterDetailedItems(context) {
                 console.error('Loading timeout - forcing modal hide');
                 if (loadingModalInstance) {
                     loadingModalInstance.hide();
-                    DOMElements.errorMessage.textContent = 'Loading timeout. Please refresh the page.';
+                    DOMElements.errorMessage.textContent = 'بارگذاری دیتا بیش از حد طول کشید. لطفاً صفحه را رفرش کنید.';
                     DOMElements.errorMessage.style.display = 'block';
                 }
-            }, 6000); // 6 second overall timeout
+            }, 30000); // 30 second overall timeout
 
             try {
+                console.log('Starting data loading process...');
+                
                 const [hosResults, dataResults, itemsResults, punchResults, holdResults] = await Promise.all([
-                    parseCsv('dbcsv/HOS.CSV'),
-                    parseCsv(CSV_URL),
-                    parseCsv(ITEMS_CSV_URL),
-                    parseCsv(PUNCH_CSV_URL),
-                    parseCsv(HOLD_POINT_CSV_URL)
+                    fetchCsvData('dbcsv/HOS.CSV'),
+                    fetchCsvData(CSV_URL),
+                    fetchCsvData(ITEMS_CSV_URL),
+                    fetchCsvData(PUNCH_CSV_URL),
+                    fetchCsvData(HOLD_POINT_CSV_URL)
                 ]);
                 
                 clearTimeout(loadingTimeout); // Clear timeout on success
@@ -866,6 +953,16 @@ function filterDetailedItems(context) {
                         else if (row.FormB && row.FormB.trim() !== '') subsystemStatusMap[subSystemId] = 'B';
                         else if (row.FormA && row.FormA.trim() !== '') subsystemStatusMap[subSystemId] = 'A';
                     }
+                });
+                console.log("✅ All data loaded successfully!");
+                console.log("📊 Data summary:", {
+                    systems: Object.keys(processedData.systemMap).length,
+                    subsystems: Object.keys(processedData.subSystemMap).length,
+                    totalItems: aggregatedStats.totalItems,
+                    detailedItems: detailedItemsData.length,
+                    punchItems: punchItemsData.length,
+                    holdItems: holdPointItemsData.length,
+                    hosRecords: hosData.length
                 });
                 console.log("Subsystem statuses loaded:", subsystemStatusMap);
 
@@ -928,29 +1025,73 @@ function filterDetailedItems(context) {
 
             } catch (e) {
                 clearTimeout(loadingTimeout);
-                DOMElements.errorMessage.textContent = `Error loading data: ${e.message}. Please refresh the page.`;
-                DOMElements.errorMessage.style.display = 'block';
                 console.error("Data loading failed:", e);
+                
+                let errorMessage = 'خطا در بارگذاری دیتا: ';
+                
+                if (e.message.includes('Timeout')) {
+                    errorMessage += 'زمان بارگذاری به پایان رسید. لطفاً اتصال اینترنت خود را بررسی کنید.';
+                } else if (e.message.includes('HTTP')) {
+                    errorMessage += 'مشکل در دسترسی به سرور. لطفاً بعداً تلاش کنید.';
+                } else if (e.message.includes('Empty') || e.message.includes('No data')) {
+                    errorMessage += 'فایلهای دیتا خالی هستند. لطفاً با مدیر سیستم تماس بگیرید.';
+                } else {
+                    errorMessage += e.message + '. لطفاً صفحه را رفرش کنید (Ctrl+F5).';
+                }
+                
+                DOMElements.errorMessage.innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        <h6 class="alert-heading">خطا در بارگذاری</h6>
+                        <p class="mb-2">${errorMessage}</p>
+                        <hr>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-danger btn-sm" onclick="location.reload()">
+                                <i class="bi bi-arrow-clockwise"></i> رفرش صفحه
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="console.log('Error details:', '${e.message.replace(/'/g, "\\'")}'')">
+                                <i class="bi bi-info-circle"></i> جزئیات خطا
+                            </button>
+                        </div>
+                    </div>
+                `;
+                DOMElements.errorMessage.style.display = 'block';
+                
             } finally {
-                // Force hide loading modal with delay to ensure it's processed
-                setTimeout(() => {
-                    if (loadingModalInstance) {
-                        try {
+                clearTimeout(loadingTimeout);
+                
+                // Force hide loading modal with multiple fallback methods
+                const hideModal = () => {
+                    try {
+                        if (loadingModalInstance && loadingModalInstance._element) {
                             loadingModalInstance.hide();
-                        } catch (modalError) {
-                            console.warn('Modal hide error:', modalError);
-                            // Force hide by manipulating DOM directly
-                            const modalEl = document.getElementById('loadingModal');
-                            if (modalEl) {
-                                modalEl.style.display = 'none';
-                                modalEl.classList.remove('show');
-                                document.body.classList.remove('modal-open');
-                                const backdrop = document.querySelector('.modal-backdrop');
-                                if (backdrop) backdrop.remove();
-                            }
                         }
+                    } catch (modalError) {
+                        console.warn('Bootstrap modal hide error:', modalError);
                     }
-                }, 100);
+                    
+                    // Force hide by manipulating DOM directly
+                    setTimeout(() => {
+                        const modalEl = document.getElementById('loadingModal');
+                        if (modalEl) {
+                            modalEl.style.display = 'none';
+                            modalEl.classList.remove('show', 'fade');
+                            modalEl.setAttribute('aria-hidden', 'true');
+                            modalEl.removeAttribute('aria-modal');
+                        }
+                        
+                        // Remove backdrop
+                        document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+                            backdrop.remove();
+                        });
+                        
+                        // Reset body classes
+                        document.body.classList.remove('modal-open');
+                        document.body.style.overflow = '';
+                        document.body.style.paddingRight = '';
+                    }, 100);
+                };
+                
+                hideModal();
             }
         }
 
