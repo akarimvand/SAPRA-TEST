@@ -93,15 +93,6 @@ const ICONS = {
             initEventListeners();
             initBootstrapTabs();
             initModals(); // Initialize modals
-            
-            // Test SweetAlert first
-            if (typeof Swal === 'undefined') {
-                console.error('SweetAlert2 not loaded!');
-                alert('SweetAlert2 library failed to load');
-            } else {
-                console.log('SweetAlert2 loaded successfully');
-            }
-            
             loadAndProcessData();
             DOMElements.sidebarToggle.setAttribute('aria-expanded', 'false');
         });
@@ -776,40 +767,53 @@ function filterDetailedItems(context) {
         async function loadAndProcessData() {
             loadingModalInstance.show();
             DOMElements.errorMessage.style.display = 'none';
-            
-            // Force close modal after 5 seconds no matter what
-            const forceCloseTimeout = setTimeout(() => {
-                console.log('Force closing modal after 5 seconds');
-                try {
-                    loadingModalInstance.hide();
-                } catch (e) {
-                    const modalEl = document.getElementById('loadingModal');
-                    if (modalEl) {
-                        modalEl.style.display = 'none';
-                        modalEl.classList.remove('show');
-                        document.body.classList.remove('modal-open');
-                        const backdrop = document.querySelector('.modal-backdrop');
-                        if (backdrop) backdrop.remove();
-                    }
-                }
-            }, 5000);
 
-            const parseCsv = async (url) => {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
-                const csvText = await response.text();
-                return new Promise((resolve, reject) => {
-                    Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: resolve,
-                        error: reject
-                    });
-                });
+            // Timeout wrapper for fetch requests
+            const fetchWithTimeout = (url, timeout = 6000) => {
+                return Promise.race([
+                    fetch(url),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error(`Timeout: ${url}`)), timeout)
+                    )
+                ]);
             };
 
+            // Retry mechanism
+            const parseCsvWithRetry = async (url, retries = 2) => {
+                for (let i = 0; i <= retries; i++) {
+                    try {
+                        const response = await fetchWithTimeout(url);
+                        if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
+                        const csvText = await response.text();
+                        return new Promise((resolve, reject) => {
+                            Papa.parse(csvText, {
+                                header: true,
+                                skipEmptyLines: true,
+                                complete: resolve,
+                                error: reject
+                            });
+                        });
+                    } catch (error) {
+                        console.warn(`Attempt ${i + 1} failed for ${url}:`, error.message);
+                        if (i === retries) throw error;
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Progressive delay
+                    }
+                }
+            };
+
+            const parseCsv = parseCsvWithRetry;
+
+            // Add overall timeout for the entire loading process
+            const loadingTimeout = setTimeout(() => {
+                console.error('Loading timeout - forcing modal hide');
+                if (loadingModalInstance) {
+                    loadingModalInstance.hide();
+                    DOMElements.errorMessage.textContent = 'Loading timeout. Please refresh the page.';
+                    DOMElements.errorMessage.style.display = 'block';
+                }
+            }, 6000); // 6 second overall timeout
+
             try {
-                // Load all files including ITEMS.CSV
                 const [hosResults, dataResults, itemsResults, punchResults, holdResults] = await Promise.all([
                     parseCsv('dbcsv/HOS.CSV'),
                     parseCsv(CSV_URL),
@@ -897,14 +901,19 @@ function filterDetailedItems(context) {
                 updateView();
 
             } catch (e) {
+                clearTimeout(loadingTimeout);
+                DOMElements.errorMessage.textContent = `Error loading data: ${e.message}. Please refresh the page.`;
+                DOMElements.errorMessage.style.display = 'block';
                 console.error("Data loading failed:", e);
             } finally {
+                // Force hide loading modal with delay to ensure it's processed
                 setTimeout(() => {
                     if (loadingModalInstance) {
                         try {
                             loadingModalInstance.hide();
                         } catch (modalError) {
                             console.warn('Modal hide error:', modalError);
+                            // Force hide by manipulating DOM directly
                             const modalEl = document.getElementById('loadingModal');
                             if (modalEl) {
                                 modalEl.style.display = 'none';
@@ -917,7 +926,6 @@ function filterDetailedItems(context) {
                     }
                 }, 100);
             }
-        }
         }
 
         // --- Rendering Functions ---
