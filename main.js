@@ -97,6 +97,15 @@ const ICONS = {
             DOMElements.sidebarToggle.setAttribute('aria-expanded', 'false');
         });
 
+        // Function to activate tabs from iframe
+        window.activateTab = function(tabId) {
+            const tabButton = document.getElementById(tabId);
+            if (tabButton) {
+                const tab = new bootstrap.Tab(tabButton);
+                tab.show();
+            }
+        };
+
         function initBootstrapTabs() {
             DOMElements.chartTabs.querySelectorAll('button[data-bs-toggle="tab"]').forEach(tabEl => {
                  bootstrapTabObjects[tabEl.id] = new bootstrap.Tab(tabEl);
@@ -759,21 +768,56 @@ function filterDetailedItems(context) {
             loadingModalInstance.show();
             DOMElements.errorMessage.style.display = 'none';
 
-            const parseCsv = (url) => {
-                return fetch(url)
-                    .then(response => {
-                        if (!response.ok) throw new Error(`Network response for ${url} was not ok`);
-                        return response.text();
-                    })
-                    .then(csvText => new Promise((resolve, reject) => {
-                        Papa.parse(csvText, {
-                            header: true,
-                            skipEmptyLines: true,
-                            complete: resolve,
-                            error: reject
-                        });
-                    }));
+            // Timeout wrapper for fetch requests
+            const fetchWithTimeout = (url, timeout = 10000) => {
+                return Promise.race([
+                    fetch(url),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error(`Timeout: ${url}`)), timeout)
+                    )
+                ]);
             };
+
+            // Retry mechanism
+            const parseCsvWithRetry = async (url, retries = 2) => {
+                for (let i = 0; i <= retries; i++) {
+                    try {
+                        const response = await fetchWithTimeout(url);
+                        if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
+                        const csvText = await response.text();
+                        return new Promise((resolve, reject) => {
+                            Papa.parse(csvText, {
+                                header: true,
+                                skipEmptyLines: true,
+                                complete: resolve,
+                                error: reject
+                            });
+                        });
+                    } catch (error) {
+                        console.warn(`Attempt ${i + 1} failed for ${url}:`, error.message);
+                        if (i === retries) throw error;
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Progressive delay
+                    }
+                }
+            };
+
+            const parseCsv = parseCsvWithRetry;
+
+            // Add overall timeout for the entire loading process
+            const loadingTimeout = setTimeout(() => {
+                console.error('Loading timeout - forcing modal hide');
+                if (loadingModalInstance) {
+                    loadingModalInstance.hide();
+                    // Show Persian SweetAlert error message
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'خطا در ارتباط با سرور',
+                        text: 'امکان بارگذاری اطلاعات وجود ندارد. لطفاً Ctrl+F5 را فشار دهید تا صفحه مجدداً بارگذاری شود.',
+                        confirmButtonText: 'متوجه شدم',
+                        confirmButtonColor: '#d33'
+                    });
+                }
+            }, 10000); // 10 second overall timeout
 
             try {
                 const [hosResults, dataResults, itemsResults, punchResults, holdResults] = await Promise.all([
@@ -783,6 +827,8 @@ function filterDetailedItems(context) {
                     parseCsv(PUNCH_CSV_URL),
                     parseCsv(HOLD_POINT_CSV_URL)
                 ]);
+                
+                clearTimeout(loadingTimeout); // Clear timeout on success
 
                 // --- Process HOS Data First ---
                 hosData = hosResults.data; // Store full data for modal
@@ -861,14 +907,36 @@ function filterDetailedItems(context) {
                 updateView();
 
             } catch (e) {
-                DOMElements.errorMessage.textContent = `Error loading data: ${e.message}`;
-                DOMElements.errorMessage.style.display = 'block';
+                clearTimeout(loadingTimeout);
                 console.error("Data loading failed:", e);
+                // Show Persian SweetAlert error message
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطا در ارتباط با سرور',
+                    text: 'امکان بارگذاری اطلاعات وجود ندارد. لطفاً Ctrl+F5 را فشار دهید تا صفحه مجدداً بارگذاری شود.',
+                    confirmButtonText: 'متوجه شدم',
+                    confirmButtonColor: '#d33'
+                });
             } finally {
-                // Ensure loading modal is always hidden after data loading attempt
-                if (loadingModalInstance) {
-                    loadingModalInstance.hide();
-                }
+                // Force hide loading modal with delay to ensure it's processed
+                setTimeout(() => {
+                    if (loadingModalInstance) {
+                        try {
+                            loadingModalInstance.hide();
+                        } catch (modalError) {
+                            console.warn('Modal hide error:', modalError);
+                            // Force hide by manipulating DOM directly
+                            const modalEl = document.getElementById('loadingModal');
+                            if (modalEl) {
+                                modalEl.style.display = 'none';
+                                modalEl.classList.remove('show');
+                                document.body.classList.remove('modal-open');
+                                const backdrop = document.querySelector('.modal-backdrop');
+                                if (backdrop) backdrop.remove();
+                            }
+                        }
+                    }
+                }, 100);
             }
         }
 
@@ -1023,7 +1091,13 @@ function filterDetailedItems(context) {
 
             renderSummaryCards();
             renderOverviewCharts(); // Render the initial overview chart
-            // Other charts are rendered based on the 'shown.bs.tab' event
+            
+            // Check if By Discipline tab is currently active and render it
+            const byDisciplineTab = document.getElementById('bydiscipline-tab-btn');
+            if (byDisciplineTab && byDisciplineTab.classList.contains('active')) {
+                renderDisciplineCharts();
+            }
+            
             renderDataTable();
             renderSidebar();
             if (loadingModalInstance) {
@@ -1196,24 +1270,67 @@ chartInstances.overview = new Chart(overviewCtx, {
             const container = DOMElements.disciplineChartsContainer;
             container.innerHTML = '';
 
-            if (selectedView.type !== 'subsystem' || !selectedView.id) {
-                container.innerHTML = `<div class="col-12 text-center py-5 text-muted" role="status">${ICONS.PieChartIcon}<p class="mt-2">Select a subsystem to view discipline details.</p></div>`;
-                return;
+            // Collect discipline data based on selected view
+            let disciplineData = {};
+            
+            if (selectedView.type === 'all') {
+                // Aggregate all disciplines across all subsystems
+                Object.values(processedData.subSystemMap).forEach(subSystem => {
+                    Object.entries(subSystem.disciplines).forEach(([disciplineName, data]) => {
+                        if (!disciplineData[disciplineName]) {
+                            disciplineData[disciplineName] = { total: 0, done: 0, pending: 0, punch: 0, hold: 0, remaining: 0 };
+                        }
+                        disciplineData[disciplineName].total += data.total;
+                        disciplineData[disciplineName].done += data.done;
+                        disciplineData[disciplineName].pending += data.pending;
+                        disciplineData[disciplineName].punch += data.punch;
+                        disciplineData[disciplineName].hold += data.hold;
+                        disciplineData[disciplineName].remaining += data.remaining;
+                    });
+                });
+            } else if (selectedView.type === 'system' && selectedView.id) {
+                // Aggregate disciplines for selected system
+                const system = processedData.systemMap[selectedView.id];
+                if (system) {
+                    system.subs.forEach(subRef => {
+                        const subSystem = processedData.subSystemMap[subRef.id];
+                        if (subSystem) {
+                            Object.entries(subSystem.disciplines).forEach(([disciplineName, data]) => {
+                                if (!disciplineData[disciplineName]) {
+                                    disciplineData[disciplineName] = { total: 0, done: 0, pending: 0, punch: 0, hold: 0, remaining: 0 };
+                                }
+                                disciplineData[disciplineName].total += data.total;
+                                disciplineData[disciplineName].done += data.done;
+                                disciplineData[disciplineName].pending += data.pending;
+                                disciplineData[disciplineName].punch += data.punch;
+                                disciplineData[disciplineName].hold += data.hold;
+                                disciplineData[disciplineName].remaining += data.remaining;
+                            });
+                        }
+                    });
+                }
+            } else if (selectedView.type === 'subsystem' && selectedView.id) {
+                // Use disciplines from selected subsystem
+                const subSystem = processedData.subSystemMap[selectedView.id];
+                if (subSystem) {
+                    disciplineData = subSystem.disciplines;
+                }
             }
-            const subSystem = processedData.subSystemMap[selectedView.id];
-            if (!subSystem || Object.keys(subSystem.disciplines).length === 0) {
-                container.innerHTML = `<div class="col-12 text-center py-5 text-muted" role="status">${ICONS.PieChartIcon}<p class="mt-2">No discipline data available for this subsystem.</p></div>`;
+
+            // Check if we have any discipline data
+            if (Object.keys(disciplineData).length === 0) {
+                container.innerHTML = `<div class="col-12 text-center py-5 text-muted" role="status">${ICONS.PieChartIcon}<p class="mt-2">No discipline data available for the current selection.</p></div>`;
                 return;
             }
 
             const row = document.createElement('div');
             row.className = 'row g-3';
 
-            Object.entries(subSystem.disciplines).forEach(([name, data]) => {
+            Object.entries(disciplineData).forEach(([name, data]) => {
                 const col = document.createElement('div');
                 col.className = 'col-12 col-md-6 col-lg-4 col-xl-3';
                 const chartId = `disciplineChart-${name.replace(/\s+/g, '-')}`;
-                const chartLabel = `${name} status for subsystem ${selectedView.id}`;
+                const chartLabel = `${name} status for ${selectedView.name}`;
                 col.innerHTML = `
                     <div class="card h-100 shadow-sm">
                         <div class="card-body text-center">
