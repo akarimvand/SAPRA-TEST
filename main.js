@@ -92,7 +92,10 @@ const ICONS = {
         document.addEventListener('DOMContentLoaded', () => {
             initEventListeners();
             initBootstrapTabs();
-            initModals(); // Initialize modals
+            initModals();
+            initUIFeatures(); // Initialize new UI features
+            initKeyboardShortcuts();
+            initAccessibility();
             
             // Initialize tooltips
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -108,6 +111,8 @@ const ICONS = {
             console.log('Debug commands available:');
             console.log('- checkDataStatus(): Check if data is loaded');
             console.log('- forceReloadData(): Force reload all data');
+            console.log('- toggleDarkMode(): Toggle dark/light theme');
+            console.log('- showToast(message, type): Show notification');
             console.log('- window.processedData: Access main data object');
         });
 
@@ -150,6 +155,11 @@ const ICONS = {
         // Force reload data function
         window.forceReloadData = function() {
             console.log('🔄 Force reloading data...');
+            showToast('🔄 Reloading data...', 'info');
+            
+            // Show progress
+            showProgress(0);
+            
             // Reset all data
             processedData = { systemMap: {}, subSystemMap: {}, allRawData: [] };
             detailedItemsData = [];
@@ -168,6 +178,246 @@ const ICONS = {
             }
             
             loadAndProcessData();
+        };
+
+        // === NEW UI FEATURES ===
+        
+        // Dark Mode Toggle
+        window.toggleDarkMode = function() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            const icon = document.getElementById('darkModeIcon');
+            icon.className = newTheme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
+            
+            showToast(`Switched to ${newTheme} mode`, 'success');
+        };
+        
+        // Toast Notifications
+        window.showToast = function(message, type = 'info', duration = 3000) {
+            const toastContainer = document.getElementById('toastContainer');
+            const toastId = 'toast-' + Date.now();
+            
+            const toastHtml = `
+                <div class="toast toast-${type}" id="${toastId}" role="alert">
+                    <div class="toast-body d-flex align-items-center">
+                        <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                        <span class="flex-grow-1">${message}</span>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+            
+            const toastElement = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastElement, { delay: duration });
+            toast.show();
+            
+            // Auto remove after hide
+            toastElement.addEventListener('hidden.bs.toast', () => {
+                toastElement.remove();
+            });
+        };
+        
+        // Progress Indicator
+        window.showProgress = function(percent) {
+            const progressContainer = document.getElementById('dataLoadProgress');
+            const progressBar = progressContainer.querySelector('.progress-bar');
+            
+            if (percent === 0) {
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+            } else if (percent === 100) {
+                progressBar.style.width = '100%';
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 500);
+            } else {
+                progressBar.style.width = percent + '%';
+            }
+        };
+        
+        // Update Breadcrumb
+        window.updateBreadcrumb = function(path) {
+            const breadcrumb = document.getElementById('breadcrumbNav');
+            breadcrumb.innerHTML = path.map((item, index) => {
+                const isLast = index === path.length - 1;
+                return `<li class="breadcrumb-item ${isLast ? 'active' : ''}">${item}</li>`;
+            }).join('');
+        };
+        
+        // Quick Search
+        window.performQuickSearch = function(query) {
+            const results = [];
+            
+            // Search in systems
+            Object.values(processedData.systemMap).forEach(system => {
+                if (system.name.toLowerCase().includes(query.toLowerCase())) {
+                    results.push({
+                        title: system.name,
+                        subtitle: 'System',
+                        type: 'system',
+                        id: system.id
+                    });
+                }
+            });
+            
+            // Search in subsystems
+            Object.values(processedData.subSystemMap).forEach(subsystem => {
+                if (subsystem.name.toLowerCase().includes(query.toLowerCase()) || 
+                    subsystem.id.toLowerCase().includes(query.toLowerCase())) {
+                    results.push({
+                        title: subsystem.id + ' - ' + subsystem.name,
+                        subtitle: 'Subsystem',
+                        type: 'subsystem',
+                        id: subsystem.id
+                    });
+                }
+            });
+            
+            return results.slice(0, 10); // Limit to 10 results
+        };
+        
+        // Initialize UI Features
+        function initUIFeatures() {
+            // Load saved theme
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            const icon = document.getElementById('darkModeIcon');
+            if (icon) {
+                icon.className = savedTheme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
+            }
+            
+            // Dark mode toggle
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            if (darkModeToggle) {
+                darkModeToggle.addEventListener('click', toggleDarkMode);
+            }
+            
+            // Quick search
+            const quickSearchBtn = document.getElementById('quickSearchBtn');
+            const quickSearchModal = new bootstrap.Modal(document.getElementById('quickSearchModal'));
+            const quickSearchInput = document.getElementById('quickSearchInput');
+            const quickSearchResults = document.getElementById('quickSearchResults');
+            
+            if (quickSearchBtn) {
+                quickSearchBtn.addEventListener('click', () => {
+                    quickSearchModal.show();
+                    setTimeout(() => quickSearchInput.focus(), 100);
+                });
+            }
+            
+            if (quickSearchInput) {
+                quickSearchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.trim();
+                    if (query.length < 2) {
+                        quickSearchResults.innerHTML = '';
+                        return;
+                    }
+                    
+                    const results = performQuickSearch(query);
+                    quickSearchResults.innerHTML = results.map(result => `
+                        <div class="search-result-item" data-type="${result.type}" data-id="${result.id}">
+                            <div class="search-result-title">${result.title}</div>
+                            <div class="search-result-subtitle">${result.subtitle}</div>
+                        </div>
+                    `).join('');
+                    
+                    // Add click handlers
+                    quickSearchResults.querySelectorAll('.search-result-item').forEach(item => {
+                        item.addEventListener('click', () => {
+                            const type = item.dataset.type;
+                            const id = item.dataset.id;
+                            handleNodeSelect(type, id, item.querySelector('.search-result-title').textContent);
+                            quickSearchModal.hide();
+                            showToast(`Navigated to ${item.querySelector('.search-result-title').textContent}`, 'success');
+                        });
+                    });
+                });
+            }
+            
+            // Refresh data button
+            const refreshBtn = document.getElementById('refreshDataBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', forceReloadData);
+            }
+        }
+        
+        // Initialize Keyboard Shortcuts
+        function initKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Ctrl+E: Export
+                if (e.ctrlKey && e.key === 'e') {
+                    e.preventDefault();
+                    handleExport();
+                    showToast('Exporting data...', 'info');
+                }
+                
+                // Ctrl+R: Refresh
+                if (e.ctrlKey && e.key === 'r') {
+                    e.preventDefault();
+                    forceReloadData();
+                }
+                
+                // Ctrl+F: Quick Search
+                if (e.ctrlKey && e.key === 'f') {
+                    e.preventDefault();
+                    document.getElementById('quickSearchBtn').click();
+                }
+                
+                // Ctrl+D: Database
+                if (e.ctrlKey && e.key === 'd') {
+                    e.preventDefault();
+                    document.getElementById('dbStorageBtn').click();
+                }
+                
+                // Ctrl+Q: Exit
+                if (e.ctrlKey && e.key === 'q') {
+                    e.preventDefault();
+                    document.getElementById('exitBtn').click();
+                }
+                
+                // ?: Show shortcuts
+                if (e.key === '?' && !e.ctrlKey && !e.altKey) {
+                    e.preventDefault();
+                    const shortcutsModal = new bootstrap.Modal(document.getElementById('shortcutsModal'));
+                    shortcutsModal.show();
+                }
+            });
+        }
+        
+        // Initialize Accessibility
+        function initAccessibility() {
+            // Focus management
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    document.body.classList.add('keyboard-navigation');
+                }
+            });
+            
+            document.addEventListener('mousedown', () => {
+                document.body.classList.remove('keyboard-navigation');
+            });
+            
+            // ARIA live regions
+            const liveRegion = document.createElement('div');
+            liveRegion.setAttribute('aria-live', 'polite');
+            liveRegion.setAttribute('aria-atomic', 'true');
+            liveRegion.className = 'visually-hidden';
+            liveRegion.id = 'live-region';
+            document.body.appendChild(liveRegion);
+        }
+        
+        // Announce to screen readers
+        window.announceToScreenReader = function(message) {
+            const liveRegion = document.getElementById('live-region');
+            if (liveRegion) {
+                liveRegion.textContent = message;
+            }
         };
 
         function initBootstrapTabs() {
@@ -964,6 +1214,21 @@ function filterDetailedItems(context) {
                     holdItems: holdPointItemsData.length,
                     hosRecords: hosData.length
                 });
+                
+                // Show success notification
+                showToast('✅ Data loaded successfully!', 'success');
+                showProgress(100);
+                
+                // Add loading progress updates
+                showProgress(20); // After HOS data
+                
+                setTimeout(() => showProgress(40), 100); // After main data
+                setTimeout(() => showProgress(60), 200); // After items data
+                setTimeout(() => showProgress(80), 300); // After punch data
+                setTimeout(() => showProgress(100), 400); // Complete
+                
+                // Announce to screen readers
+                announceToScreenReader('Data has been loaded successfully');
                 console.log("Subsystem statuses loaded:", subsystemStatusMap);
 
                 // --- Process Main Data ---
@@ -1039,22 +1304,15 @@ function filterDetailedItems(context) {
                     errorMessage += e.message + '. لطفاً صفحه را رفرش کنید (Ctrl+F5).';
                 }
                 
-                DOMElements.errorMessage.innerHTML = `
-                    <div class="alert alert-danger" role="alert">
-                        <h6 class="alert-heading">خطا در بارگذاری</h6>
-                        <p class="mb-2">${errorMessage}</p>
-                        <hr>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-outline-danger btn-sm" onclick="location.reload()">
-                                <i class="bi bi-arrow-clockwise"></i> رفرش صفحه
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm" onclick="console.log('Error details:', '${e.message.replace(/'/g, "\\'")}'')">
-                                <i class="bi bi-info-circle"></i> جزئیات خطا
-                            </button>
-                        </div>
-                    </div>
-                `;
-                DOMElements.errorMessage.style.display = 'block';
+                // Show error toast
+                showToast('❌ Data loading failed', 'error');
+                showProgress(0);
+                
+                // Announce to screen readers
+                announceToScreenReader('Data loading failed. Please try again.');
+                
+                document.getElementById('errorMessageText').textContent = errorMessage;
+                DOMElements.errorMessage.classList.remove('d-none');
                 
             } finally {
                 clearTimeout(loadingTimeout);
@@ -1226,6 +1484,21 @@ function filterDetailedItems(context) {
 
         function handleNodeSelect(type, id, name, parentId = null) {
             selectedView = { type, id, name, parentId };
+            
+            // Update breadcrumb
+            const breadcrumbPath = ['All Systems'];
+            if (type === 'system') {
+                breadcrumbPath.push(name);
+            } else if (type === 'subsystem') {
+                const system = processedData.systemMap[parentId];
+                if (system) breadcrumbPath.push(system.name);
+                breadcrumbPath.push(name);
+            }
+            updateBreadcrumb(breadcrumbPath);
+            
+            // Announce to screen readers
+            announceToScreenReader(`Selected ${type}: ${name}`);
+            
             updateView();
 
             // Send message to workflow iframe
