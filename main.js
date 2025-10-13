@@ -182,19 +182,7 @@ const ICONS = {
 
         // === NEW UI FEATURES ===
         
-        // Dark Mode Toggle
-        window.toggleDarkMode = function() {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            
-            const icon = document.getElementById('darkModeIcon');
-            icon.className = newTheme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
-            
-            showToast(`Switched to ${newTheme} mode`, 'success');
-        };
+
         
         // Toast Notifications
         window.showToast = function(message, type = 'info', duration = 3000) {
@@ -250,53 +238,35 @@ const ICONS = {
             }).join('');
         };
         
-        // Quick Search
+        // Quick Search in Items
         window.performQuickSearch = function(query) {
             const results = [];
+            const searchQuery = query.toLowerCase();
             
-            // Search in systems
-            Object.values(processedData.systemMap).forEach(system => {
-                if (system.name.toLowerCase().includes(query.toLowerCase())) {
+            // Search in detailed items
+            detailedItemsData.forEach(item => {
+                if (item.tagNo.toLowerCase().includes(searchQuery) ||
+                    item.description.toLowerCase().includes(searchQuery) ||
+                    item.typeCode.toLowerCase().includes(searchQuery) ||
+                    item.subsystem.toLowerCase().includes(searchQuery) ||
+                    item.discipline.toLowerCase().includes(searchQuery)) {
+                    
                     results.push({
-                        title: system.name,
-                        subtitle: 'System',
-                        type: 'system',
-                        id: system.id
+                        tagNo: item.tagNo,
+                        description: item.description,
+                        subsystem: item.subsystem,
+                        discipline: item.discipline,
+                        typeCode: item.typeCode,
+                        status: item.status
                     });
                 }
             });
             
-            // Search in subsystems
-            Object.values(processedData.subSystemMap).forEach(subsystem => {
-                if (subsystem.name.toLowerCase().includes(query.toLowerCase()) || 
-                    subsystem.id.toLowerCase().includes(query.toLowerCase())) {
-                    results.push({
-                        title: subsystem.id + ' - ' + subsystem.name,
-                        subtitle: 'Subsystem',
-                        type: 'subsystem',
-                        id: subsystem.id
-                    });
-                }
-            });
-            
-            return results.slice(0, 10); // Limit to 10 results
+            return results.slice(0, 20); // Limit to 20 results
         };
         
         // Initialize UI Features
         function initUIFeatures() {
-            // Load saved theme
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            const icon = document.getElementById('darkModeIcon');
-            if (icon) {
-                icon.className = savedTheme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
-            }
-            
-            // Dark mode toggle
-            const darkModeToggle = document.getElementById('darkModeToggle');
-            if (darkModeToggle) {
-                darkModeToggle.addEventListener('click', toggleDarkMode);
-            }
             
             // Quick search
             const quickSearchBtn = document.getElementById('quickSearchBtn');
@@ -320,21 +290,44 @@ const ICONS = {
                     }
                     
                     const results = performQuickSearch(query);
+                    
+                    if (results.length === 0) {
+                        quickSearchResults.innerHTML = '<div class="text-center text-muted py-3">No items found</div>';
+                        return;
+                    }
+                    
                     quickSearchResults.innerHTML = results.map(result => `
-                        <div class="search-result-item" data-type="${result.type}" data-id="${result.id}">
-                            <div class="search-result-title">${result.title}</div>
-                            <div class="search-result-subtitle">${result.subtitle}</div>
+                        <div class="search-result-item" data-tag-no="${result.tagNo}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="search-result-title fw-bold text-primary">${result.tagNo}</div>
+                                    <div class="search-result-subtitle text-muted small">${result.description}</div>
+                                    <div class="small text-secondary">
+                                        <span class="badge bg-light text-dark me-1">${result.subsystem}</span>
+                                        <span class="badge bg-light text-dark me-1">${result.discipline}</span>
+                                        <span class="badge bg-light text-dark">${result.typeCode}</span>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge ${result.status?.toLowerCase() === 'done' ? 'bg-success' : 'bg-warning'}">
+                                        ${result.status || 'N/A'}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     `).join('');
                     
                     // Add click handlers
                     quickSearchResults.querySelectorAll('.search-result-item').forEach(item => {
                         item.addEventListener('click', () => {
-                            const type = item.dataset.type;
-                            const id = item.dataset.id;
-                            handleNodeSelect(type, id, item.querySelector('.search-result-title').textContent);
+                            const tagNo = item.dataset.tagNo;
                             quickSearchModal.hide();
-                            showToast(`Navigated to ${item.querySelector('.search-result-title').textContent}`, 'success');
+                            
+                            // Load activities for the selected tag
+                            loadActivitiesForTag(tagNo);
+                            activitiesModal.show();
+                            
+                            showToast(`Showing activities for ${tagNo}`, 'success');
                         });
                     });
                 });

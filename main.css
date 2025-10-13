@@ -997,26 +997,31 @@ main[role="main"] {
 }
 
 .search-result-item {
-    padding: 0.75rem;
+    padding: 1rem;
     border-radius: var(--border-radius);
     cursor: pointer;
     transition: var(--transition-base);
-    border: 1px solid transparent;
+    border: 1px solid var(--border-color);
+    margin-bottom: 0.5rem;
 }
 
 .search-result-item:hover {
-    background-color: rgba(59, 130, 246, 0.1);
+    background-color: rgba(59, 130, 246, 0.05);
     border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
 }
 
 .search-result-title {
     font-weight: 600;
-    color: var(--text-color);
+    color: var(--primary-color);
+    font-size: 1rem;
 }
 
 .search-result-subtitle {
     font-size: 0.875rem;
     color: var(--text-muted-color);
+    margin: 0.25rem 0;
 }
 
 /* ===== COLLAPSIBLE SECTIONS ===== */
