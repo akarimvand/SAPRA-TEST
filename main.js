@@ -93,6 +93,13 @@ const ICONS = {
             initEventListeners();
             initBootstrapTabs();
             initModals(); // Initialize modals
+            
+            // Initialize tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+            
             loadAndProcessData();
             DOMElements.sidebarToggle.setAttribute('aria-expanded', 'false');
         });
