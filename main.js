@@ -11,7 +11,7 @@ window.formCounts = {
 const GITHUB_BASE_URL = "https://raw.githubusercontent.com/akarimvand/SAPRA2/refs/heads/main/dbcsv/";
 
 const CSV_URL = GITHUB_BASE_URL + "DATA.CSV";
-// ITEMS.CSV will be loaded separately in background
+const ITEMS_CSV_URL = GITHUB_BASE_URL + "ITEMS.CSV";
 const PUNCH_CSV_URL = GITHUB_BASE_URL + "PUNCH.CSV";
 const HOLD_POINT_CSV_URL = GITHUB_BASE_URL + "HOLD_POINT.CSV";
 const ACTIVITIES_CSV_URL = GITHUB_BASE_URL + "ACTIVITES.CSV"; // Preserving original filename
@@ -776,6 +776,23 @@ function filterDetailedItems(context) {
         async function loadAndProcessData() {
             loadingModalInstance.show();
             DOMElements.errorMessage.style.display = 'none';
+            
+            // Force close modal after 5 seconds no matter what
+            const forceCloseTimeout = setTimeout(() => {
+                console.log('Force closing modal after 5 seconds');
+                try {
+                    loadingModalInstance.hide();
+                } catch (e) {
+                    const modalEl = document.getElementById('loadingModal');
+                    if (modalEl) {
+                        modalEl.style.display = 'none';
+                        modalEl.classList.remove('show');
+                        document.body.classList.remove('modal-open');
+                        const backdrop = document.querySelector('.modal-backdrop');
+                        if (backdrop) backdrop.remove();
+                    }
+                }
+            }, 5000);
 
             const parseCsv = async (url) => {
                 const response = await fetch(url);
@@ -792,10 +809,11 @@ function filterDetailedItems(context) {
             };
 
             try {
-                // Load essential files first (fast loading)
-                const [hosResults, dataResults, punchResults, holdResults] = await Promise.all([
+                // Load all files including ITEMS.CSV
+                const [hosResults, dataResults, itemsResults, punchResults, holdResults] = await Promise.all([
                     parseCsv('dbcsv/HOS.CSV'),
                     parseCsv(CSV_URL),
+                    parseCsv(ITEMS_CSV_URL),
                     parseCsv(PUNCH_CSV_URL),
                     parseCsv(HOLD_POINT_CSV_URL)
                 ]);
@@ -850,9 +868,12 @@ function filterDetailedItems(context) {
                 processedData = { systemMap, subSystemMap, allRawData: dataResults.data };
 
                 // --- Process Other Detailed Data ---
-                // ITEMS.CSV will be loaded in background
-                detailedItemsData = [];
-                console.log("Main data loaded, ITEMS.CSV loading in background...");
+                detailedItemsData = itemsResults.data.map(item => ({
+                    subsystem: item.SD_Sub_System?.trim() || '', discipline: item.Discipline_Name?.trim() || '',
+                    tagNo: item.ITEM_Tag_NO?.trim() || '', typeCode: item.ITEM_Type_Code?.trim() || '',
+                    description: item.ITEM_Description?.trim() || '', status: item.ITEM_Status?.trim() || ''
+                }));
+                console.log("Detailed items data loaded:", detailedItemsData.length, "items");
 
                 punchItemsData = punchResults.data.map(item => ({
                     SD_Sub_System: item.SD_Sub_System?.trim() || '', Discipline_Name: item.Discipline_Name?.trim() || '',
@@ -874,11 +895,6 @@ function filterDetailedItems(context) {
 
                 // --- Initial Render ---
                 updateView();
-                
-                // Load heavy ITEMS.CSV in background after main UI is ready
-                setTimeout(() => {
-                    loadItemsInBackground();
-                }, 100);
 
             } catch (e) {
                 console.error("Data loading failed:", e);
@@ -902,36 +918,6 @@ function filterDetailedItems(context) {
                 }, 100);
             }
         }
-
-        // Background loading of heavy ITEMS.CSV
-        async function loadItemsInBackground() {
-            try {
-                console.log('Loading ITEMS.CSV in background...');
-                const response = await fetch('https://raw.githubusercontent.com/akarimvand/SAPRA-TEST/refs/heads/main/dbcsv/ITEMS.CSV');
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const csvText = await response.text();
-                
-                Papa.parse(csvText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                        detailedItemsData = results.data.map(item => ({
-                            subsystem: item.SD_Sub_System?.trim() || '', 
-                            discipline: item.Discipline_Name?.trim() || '',
-                            tagNo: item.ITEM_Tag_NO?.trim() || '', 
-                            typeCode: item.ITEM_Type_Code?.trim() || '',
-                            description: item.ITEM_Description?.trim() || '', 
-                            status: item.ITEM_Status?.trim() || ''
-                        }));
-                        console.log("ITEMS.CSV loaded in background:", detailedItemsData.length, "items");
-                    },
-                    error: (err) => {
-                        console.error("Background ITEMS.CSV loading failed:", err);
-                    }
-                });
-            } catch (error) {
-                console.error("Background ITEMS.CSV loading failed:", error);
-            }
         }
 
         // --- Rendering Functions ---
