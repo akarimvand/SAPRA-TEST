@@ -777,51 +777,24 @@ function filterDetailedItems(context) {
             loadingModalInstance.show();
             DOMElements.errorMessage.style.display = 'none';
 
-            // Timeout wrapper for fetch requests
-            const fetchWithTimeout = (url, timeout = 10000) => {
-                return Promise.race([
-                    fetch(url),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error(`Timeout: ${url}`)), timeout)
-                    )
-                ]);
-            };
-
-            // Retry mechanism
-            const parseCsvWithRetry = async (url, retries = 2) => {
-                for (let i = 0; i <= retries; i++) {
-                    try {
-                        const response = await fetchWithTimeout(url);
-                        if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
-                        const csvText = await response.text();
-                        return new Promise((resolve, reject) => {
-                            Papa.parse(csvText, {
-                                header: true,
-                                skipEmptyLines: true,
-                                complete: resolve,
-                                error: reject
-                            });
-                        });
-                    } catch (error) {
-                        console.warn(`Attempt ${i + 1} failed for ${url}:`, error.message);
-                        if (i === retries) throw error;
-                        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Progressive delay
-                    }
-                }
-            };
-
-            const parseCsv = parseCsvWithRetry;
-
-            // Add overall timeout for the entire loading process
-            let timeoutTriggered = false;
+            // Simple timeout to check if loading modal is still open after 6 seconds
             const loadingTimeout = setTimeout(() => {
-                timeoutTriggered = true;
-                loadingTimeout._destroyed = true;
-                console.error('Loading timeout - 10 seconds exceeded');
-                if (loadingModalInstance) {
+                console.log('Timeout triggered - checking modal state');
+                const modalEl = document.getElementById('loadingModal');
+                console.log('Modal element:', modalEl);
+                console.log('Modal classes:', modalEl ? modalEl.className : 'null');
+                console.log('Modal has show class:', modalEl ? modalEl.classList.contains('show') : 'null');
+                
+                if (modalEl && modalEl.classList.contains('show')) {
+                    console.error('Loading timeout - 6 seconds exceeded, showing alert');
                     loadingModalInstance.hide();
-                    // Show Persian SweetAlert error message
+                    
+                    // Test simple alert first
+                    alert('خطا در ارتباط با سرور - لطفاً Ctrl+F5 را فشار دهید');
+                    
+                    // Also try SweetAlert
                     if (typeof Swal !== 'undefined') {
+                        console.log('SweetAlert available, showing message');
                         Swal.fire({
                             icon: 'error',
                             title: 'خطا در ارتباط با سرور',
@@ -830,10 +803,26 @@ function filterDetailedItems(context) {
                             confirmButtonColor: '#d33'
                         });
                     } else {
-                        alert('خطا در ارتباط با سرور - لطفاً Ctrl+F5 را فشار دهید');
+                        console.log('SweetAlert not available');
                     }
+                } else {
+                    console.log('Modal not found or not showing');
                 }
-            }, 10000); // 10 second overall timeout
+            }, 6000); // 6 second timeout
+
+            const parseCsv = async (url) => {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
+                const csvText = await response.text();
+                return new Promise((resolve, reject) => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: resolve,
+                        error: reject
+                    });
+                });
+            };
 
             try {
                 const [hosResults, dataResults, itemsResults, punchResults, holdResults] = await Promise.all([
@@ -924,44 +913,26 @@ function filterDetailedItems(context) {
 
             } catch (e) {
                 clearTimeout(loadingTimeout);
-                loadingTimeout._destroyed = true;
                 console.error("Data loading failed:", e);
-                if (loadingModalInstance) {
-                    loadingModalInstance.hide();
-                }
-                // Show Persian SweetAlert error message
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'خطا در ارتباط با سرور',
-                        text: 'امکان بارگذاری اطلاعات وجود ندارد. لطفاً Ctrl+F5 را فشار دهید تا صفحه مجدداً بارگذاری شود.',
-                        confirmButtonText: 'متوجه شدم',
-                        confirmButtonColor: '#d33'
-                    });
-                } else {
-                    alert('خطا در ارتباط با سرور - لطفاً Ctrl+F5 را فشار دهید');
-                }
             } finally {
-                // Only hide modal if loading was successful (timeout not triggered)
-                if (!loadingTimeout._destroyed) {
-                    setTimeout(() => {
-                        if (loadingModalInstance) {
-                            try {
-                                loadingModalInstance.hide();
-                            } catch (modalError) {
-                                console.warn('Modal hide error:', modalError);
-                                const modalEl = document.getElementById('loadingModal');
-                                if (modalEl) {
-                                    modalEl.style.display = 'none';
-                                    modalEl.classList.remove('show');
-                                    document.body.classList.remove('modal-open');
-                                    const backdrop = document.querySelector('.modal-backdrop');
-                                    if (backdrop) backdrop.remove();
-                                }
+                clearTimeout(loadingTimeout);
+                setTimeout(() => {
+                    if (loadingModalInstance) {
+                        try {
+                            loadingModalInstance.hide();
+                        } catch (modalError) {
+                            console.warn('Modal hide error:', modalError);
+                            const modalEl = document.getElementById('loadingModal');
+                            if (modalEl) {
+                                modalEl.style.display = 'none';
+                                modalEl.classList.remove('show');
+                                document.body.classList.remove('modal-open');
+                                const backdrop = document.querySelector('.modal-backdrop');
+                                if (backdrop) backdrop.remove();
                             }
                         }
-                    }, 100);
-                }
+                    }
+                }, 100);
             }
         }
 
