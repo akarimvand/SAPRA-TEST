@@ -532,14 +532,8 @@ body {
     max-width: 150px;
 }
 
-.table th:nth-child(2), .table td:nth-child(2) {
-    white-space: nowrap !important;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 0.75rem;
-    word-wrap: normal;
-    overflow-wrap: normal;
-    width: auto;
+.table th, .table td {
+    text-align: left !important;
 }
 
 .table th:nth-child(1), .table td:nth-child(1) {
@@ -548,15 +542,30 @@ body {
     font-size: 0.8rem;
 }
 
+.table th:nth-child(2), .table td:nth-child(2) {
+    white-space: nowrap !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.75rem;
+    word-wrap: normal;
+    overflow-wrap: normal;
+    width: 31.25%;
+}
+
 .table th:nth-child(3), .table td:nth-child(3),
-.table th:nth-child(4), .table td:nth-child(4),
+.table th:nth-child(4), .table td:nth-child(4) {
+    width: 12.5%;
+    white-space: nowrap;
+    font-size: 0.8rem;
+}
+
 .table th:nth-child(5), .table td:nth-child(5),
 .table th:nth-child(6), .table td:nth-child(6),
 .table th:nth-child(7), .table td:nth-child(7),
 .table th:nth-child(8), .table td:nth-child(8),
 .table th:nth-child(9), .table td:nth-child(9),
 .table th:nth-child(10), .table td:nth-child(10) {
-    width: 12.5%;
+    width: 7.08%;
     white-space: nowrap;
     font-size: 0.8rem;
 }
