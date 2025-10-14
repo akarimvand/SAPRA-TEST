@@ -496,9 +496,6 @@ function initModals() {
             DOMElements.exportExcelBtn.addEventListener('click', handleExport);
             DOMElements.exitBtn.addEventListener('click', () => { window.location.href = 'index.html'; });
             DOMElements.downloadAllBtn.addEventListener('click', handleDownloadAll);
-            
-            // Add main table export listener
-            document.getElementById('exportMainTableBtn').addEventListener('click', exportMainTable);
 
             // New listener for when a chart tab is shown, ensuring charts render only when visible.
             DOMElements.chartTabs.addEventListener('shown.bs.tab', function (event) {
@@ -1817,14 +1814,8 @@ chartInstances.overview = new Chart(overviewCtx, {
                 { header: 'Status', accessor: 'statusPercent' },
             ];
             DOMElements.dataTableHead.innerHTML = columns.map(col => `<th scope="col">${col.header}</th>`).join('');
-            
-            // Add filter row
-            const filterRow = document.getElementById('dataTableFilters');
-            filterRow.innerHTML = columns.map((col, i) => `<th><input type="text" placeholder="Filter ${col.header}" data-col="${i}"></th>`).join('');
 
             const tableData = _generateTableDataForView(selectedView, processedData, aggregatedStats.totalItems === 0);
-            window.currentTableData = tableData; // Store for export
-            
             let bodyHTML = '';
             if (tableData.length === 0) {
                 bodyHTML = `<tr><td colspan="${columns.length}" class="text-center py-5 text-muted">Please select a subsystem or system to view details, or no data matches the current filter.</td></tr>`;
@@ -1857,55 +1848,6 @@ chartInstances.overview = new Chart(overviewCtx, {
                 });
             }
             DOMElements.dataTableBody.innerHTML = bodyHTML;
-            
-            // Add filter event listeners
-            filterRow.querySelectorAll('input').forEach(input => {
-                input.addEventListener('input', filterMainTable);
-            });
-        }
-        
-        function filterMainTable() {
-            const tbody = DOMElements.dataTableBody;
-            const rows = tbody.querySelectorAll('tr');
-            const filters = Array.from(document.querySelectorAll('#dataTableFilters input')).map(input => input.value.toLowerCase());
-            
-            rows.forEach(row => {
-                const cells = row.querySelectorAll('th, td');
-                let show = true;
-                
-                filters.forEach((filter, i) => {
-                    if (filter && cells[i]) {
-                        const cellText = cells[i].textContent.toLowerCase();
-                        if (!cellText.includes(filter)) {
-                            show = false;
-                        }
-                    }
-                });
-                
-                row.style.display = show ? '' : 'none';
-            });
-        }
-        
-        function exportMainTable() {
-            const tbody = DOMElements.dataTableBody;
-            const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
-            
-            if (visibleRows.length === 0) {
-                alert('No data to export');
-                return;
-            }
-            
-            const headers = Array.from(document.querySelectorAll('#dataTableHead th')).map(th => th.textContent);
-            const data = visibleRows.map(row => 
-                Array.from(row.querySelectorAll('th, td')).map(cell => cell.textContent)
-            );
-            
-            const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Items Details');
-            
-            const date = new Date().toISOString().split('T')[0];
-            XLSX.writeFile(wb, `SAPRA_Items_Details_${date}.xlsx`);
         }
 
         // --- Data Aggregation (Adapted from dataAggregator.ts) ---

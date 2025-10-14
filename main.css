@@ -447,51 +447,27 @@ body {
 }
 
 /* فریز کردن هدر جدول */
-.main-table-container {
+.table-responsive {
     max-height: 500px;
     overflow-y: auto;
     position: relative;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
 }
 
-.main-table-container .table {
-    margin-bottom: 0;
-}
-
-.main-table-container .table thead th:not(.filter-row th) {
+.table thead th {
     position: sticky;
     top: 0;
-    z-index: 12;
-    background-color: #f8f9fa !important;
-    border-bottom: 2px solid #dee2e6;
-}
-
-.main-table-container .filter-row th {
-    position: sticky;
-    top: 40px;
-    z-index: 11;
-    background-color: #ffffff !important;
-    border-bottom: 1px solid #dee2e6;
-    padding: 0.25rem 0.5rem;
-}
-
-.filter-row input {
-    width: 100%;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    background-color: #fff;
+    z-index: 10;
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .table th, .table td {
     white-space: nowrap;
-    padding: 0.35rem 0.75rem;
+    padding: 0.35rem 0.75rem; /* کاهش padding به حداقل ممکن */
     vertical-align: middle;
     font-size: 0.85rem;
-    height: auto;
-    line-height: 1.3;
+    height: auto; /* اتوماتیک */
+    line-height: 1.3; /* کاهش فاصله خطوط */
 }
 
 .table thead th {
@@ -501,7 +477,7 @@ body {
     font-size: 0.8rem;
     color: var(--text-muted-color);
     border-bottom: 2px solid var(--border-color);
-    padding: 0.4rem 0.75rem;
+    padding: 0.4rem 0.75rem; /* کاهش padding در هدر */
     line-height: 1.3;
 }
 
