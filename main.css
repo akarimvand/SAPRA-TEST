@@ -459,21 +459,21 @@ body {
     margin-bottom: 0;
 }
 
-.main-table-container .table thead tr:first-child th {
+.main-table-container .table thead tr.filter-row th {
     position: sticky;
     top: 0;
     z-index: 12;
-    background-color: #f8f9fa !important;
-    border-bottom: 2px solid #dee2e6;
-}
-
-.main-table-container .table thead tr.filter-row th {
-    position: sticky;
-    top: 42px;
-    z-index: 11;
     background-color: #ffffff !important;
     border-bottom: 1px solid #dee2e6;
     padding: 0.25rem 0.5rem;
+}
+
+.main-table-container .table thead tr:nth-child(2) th {
+    position: sticky;
+    top: 42px;
+    z-index: 11;
+    background-color: #f8f9fa !important;
+    border-bottom: 2px solid #dee2e6;
 }
 
 .filter-row input {
