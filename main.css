@@ -533,7 +533,7 @@ body {
 }
 
 .table th, .table td {
-    text-align: left !important;
+    text-align: center !important;
 }
 
 .table th:nth-child(1), .table td:nth-child(1) {
@@ -550,9 +550,15 @@ body {
     word-wrap: normal;
     overflow-wrap: normal;
     width: 31.25%;
+    text-align: left !important;
 }
 
-.table th:nth-child(3), .table td:nth-child(3),
+.table th:nth-child(3), .table td:nth-child(3) {
+    width: 1%;
+    white-space: nowrap;
+    font-size: 0.8rem;
+}
+
 .table th:nth-child(4), .table td:nth-child(4) {
     width: 12.5%;
     white-space: nowrap;
@@ -563,7 +569,12 @@ body {
 .table th:nth-child(6), .table td:nth-child(6),
 .table th:nth-child(7), .table td:nth-child(7),
 .table th:nth-child(8), .table td:nth-child(8),
-.table th:nth-child(9), .table td:nth-child(9),
+.table th:nth-child(9), .table td:nth-child(9) {
+    width: 10.6%;
+    white-space: nowrap;
+    font-size: 0.8rem;
+}
+
 .table th:nth-child(10), .table td:nth-child(10) {
     width: 7.08%;
     white-space: nowrap;
@@ -623,6 +634,11 @@ body {
     background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
     box-shadow: var(--shadow-lg);
     border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    padding: 0.25rem 0;
+}
+
+.sapra-navbar-header .container-fluid {
+    padding: 0.25rem 1rem;
 }
 
 .sapra-navbar-header .navbar-toggler {
@@ -846,10 +862,10 @@ body {
     border: 1px solid transparent;
     border-bottom: none;
     color: #adb5bd;
-    padding: 0.65rem 1.25rem;
+    padding: 0.4rem 1rem;
     font-weight: 600;
-    font-size: 0.95rem;
-    border-radius: 8px 8px 0 0;
+    font-size: 0.85rem;
+    border-radius: 6px 6px 0 0;
     transition: all 0.3s ease;
     margin-right: 4px;
 }
