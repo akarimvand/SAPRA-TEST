@@ -446,6 +446,21 @@ body {
     overflow: hidden;
 }
 
+/* فریز کردن هدر جدول */
+.table-responsive {
+    max-height: 500px;
+    overflow-y: auto;
+    position: relative;
+}
+
+.table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
 .table th, .table td {
     white-space: nowrap;
     padding: 0.35rem 0.75rem; /* کاهش padding به حداقل ممکن */
@@ -902,6 +917,19 @@ main[role="main"] {
 .progress-bar {
     background: linear-gradient(90deg, var(--primary-color), #3b82f6);
     transition: width 0.3s ease;
+}
+
+/* تطبیق رنگ پروگرس بار با رنگ فونت کارت‌ها */
+.summary-card .progress-bar.bg-success {
+    background: linear-gradient(90deg, #1e7e34, #155724) !important;
+}
+
+.summary-card .progress-bar.bg-warning {
+    background: linear-gradient(90deg, #d39e00, #b8860b) !important;
+}
+
+.summary-card .progress-bar.bg-info {
+    background: linear-gradient(90deg, #0c7cd5, #0056b3) !important;
 }
 
 /* ===== EMPTY STATE ===== */
