@@ -1818,11 +1818,16 @@ chartInstances.overview = new Chart(overviewCtx, {
             ];
             DOMElements.dataTableHead.innerHTML = columns.map(col => `<th scope="col">${col.header}</th>`).join('');
             
-            // Add filter row with multi-select for specific columns
+            // Add filter row with dropdown for specific columns
             const filterRow = document.getElementById('dataTableFilters');
             filterRow.innerHTML = columns.map((col, i) => {
                 if (col.header === 'Discipline' || col.header === 'Form' || col.header === 'Status') {
-                    return `<th><select multiple class="form-select form-select-sm" data-col="${i}" style="height: 32px; font-size: 0.75rem;"><option value="">All ${col.header}</option></select></th>`;
+                    return `<th><div class="dropdown-filter" data-col="${i}">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-truncate" type="button" data-bs-toggle="dropdown" style="font-size: 0.75rem; height: 32px;">
+                            All ${col.header}
+                        </button>
+                        <ul class="dropdown-menu" style="max-height: 200px; overflow-y: auto; font-size: 0.75rem;"></ul>
+                    </div></th>`;
                 } else {
                     return `<th><input type="text" placeholder="Filter ${col.header}" data-col="${i}"></th>`;
                 }
@@ -1864,83 +1869,96 @@ chartInstances.overview = new Chart(overviewCtx, {
             }
             DOMElements.dataTableBody.innerHTML = bodyHTML;
             
-            // Populate multi-select options
-            const disciplineSelect = filterRow.querySelector('[data-col="3"]');
-            const formSelect = filterRow.querySelector('[data-col="2"]');
-            const statusSelect = filterRow.querySelector('[data-col="9"]');
+            // Populate dropdown options
+            const disciplineDropdown = filterRow.querySelector('[data-col="3"] .dropdown-menu');
+            const formDropdown = filterRow.querySelector('[data-col="2"] .dropdown-menu');
+            const statusDropdown = filterRow.querySelector('[data-col="9"] .dropdown-menu');
             
-            if (disciplineSelect && tableData.length > 0) {
+            if (disciplineDropdown && tableData.length > 0) {
                 const disciplines = [...new Set(tableData.map(row => row.discipline))].sort();
-                disciplineSelect.innerHTML = '<option value="">All Discipline</option>' + 
-                    disciplines.map(d => `<option value="${d}">${d}</option>`).join('');
+                disciplineDropdown.innerHTML = disciplines.map(d => 
+                    `<li><label class="dropdown-item"><input type="checkbox" value="${d}" class="me-2">${d}</label></li>`
+                ).join('');
             }
             
-            if (formSelect && tableData.length > 0) {
+            if (formDropdown && tableData.length > 0) {
                 const forms = [...new Set(tableData.map(row => row.formStatus).filter(f => f))].sort();
-                formSelect.innerHTML = '<option value="">All Form</option>' + 
-                    forms.map(f => `<option value="${f}">${f}</option>`).join('');
+                formDropdown.innerHTML = forms.map(f => 
+                    `<li><label class="dropdown-item"><input type="checkbox" value="${f}" class="me-2">${f}</label></li>`
+                ).join('');
             }
             
-            if (statusSelect && tableData.length > 0) {
+            if (statusDropdown && tableData.length > 0) {
                 const statuses = [...new Set(tableData.map(row => Math.round((row.completed / row.totalItems) * 100) + '%'))].sort((a,b) => parseInt(a) - parseInt(b));
-                statusSelect.innerHTML = '<option value="">All Status</option>' + 
-                    statuses.map(s => `<option value="${s}">${s}</option>`).join('');
+                statusDropdown.innerHTML = statuses.map(s => 
+                    `<li><label class="dropdown-item"><input type="checkbox" value="${s}" class="me-2">${s}</label></li>`
+                ).join('');
             }
             
             // Add filter event listeners
-            filterRow.querySelectorAll('input').forEach(input => {
+            filterRow.querySelectorAll('input[type="text"]').forEach(input => {
                 input.addEventListener('input', filterMainTable);
             });
-            filterRow.querySelectorAll('select').forEach(select => {
-                select.addEventListener('change', filterMainTable);
+            filterRow.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    updateDropdownButton(checkbox);
+                    filterMainTable();
+                });
             });
+        }
+        
+        function updateDropdownButton(checkbox) {
+            const dropdown = checkbox.closest('.dropdown-filter');
+            const button = dropdown.querySelector('.dropdown-toggle');
+            const checkboxes = dropdown.querySelectorAll('input[type="checkbox"]:checked');
+            const colIndex = dropdown.dataset.col;
+            const colNames = ['', '', 'Form', 'Discipline', '', '', '', '', '', 'Status'];
+            
+            if (checkboxes.length === 0) {
+                button.textContent = `All ${colNames[colIndex]}`;
+            } else if (checkboxes.length === 1) {
+                button.textContent = checkboxes[0].value;
+            } else {
+                button.textContent = `${checkboxes.length} selected`;
+            }
         }
         
         function filterMainTable() {
             const tbody = DOMElements.dataTableBody;
             const rows = tbody.querySelectorAll('tr');
-            const filterInputs = document.querySelectorAll('#dataTableFilters input, #dataTableFilters select');
             const numericColumns = [4, 5, 6, 7, 8]; // Total Items, Completed, Pending, Punch, Hold Point
             
             rows.forEach(row => {
                 const cells = row.querySelectorAll('th, td');
                 let show = true;
                 
-                filterInputs.forEach((filterElement, i) => {
-                    if (!cells[i]) return;
+                // Check text inputs
+                document.querySelectorAll('#dataTableFilters input[type="text"]').forEach(input => {
+                    const colIndex = parseInt(input.dataset.col);
+                    if (!cells[colIndex] || !input.value) return;
                     
-                    const cellText = cells[i].textContent.toLowerCase();
+                    const cellText = cells[colIndex].textContent.toLowerCase();
+                    const filter = input.value.toLowerCase();
                     
-                    if (filterElement.tagName === 'SELECT') {
-                        // Multi-select dropdown
-                        const selectedValues = Array.from(filterElement.selectedOptions)
-                            .map(option => option.value)
-                            .filter(value => value !== '');
-                        
-                        if (selectedValues.length > 0) {
-                            const cellValue = cells[i].textContent.trim();
-                            if (!selectedValues.includes(cellValue)) {
-                                show = false;
-                            }
-                        }
+                    if (numericColumns.includes(colIndex)) {
+                        const cellValue = cells[colIndex].textContent.replace(/,/g, '').trim();
+                        const filterValue = filter.replace(/,/g, '').trim();
+                        if (cellValue !== filterValue) show = false;
                     } else {
-                        // Text input
-                        const filter = filterElement.value.toLowerCase();
-                        if (filter) {
-                            if (numericColumns.includes(i)) {
-                                // Exact match for numeric columns
-                                const cellValue = cells[i].textContent.replace(/,/g, '').trim();
-                                const filterValue = filter.replace(/,/g, '').trim();
-                                if (cellValue !== filterValue) {
-                                    show = false;
-                                }
-                            } else {
-                                // Substring match for text columns
-                                if (!cellText.includes(filter)) {
-                                    show = false;
-                                }
-                            }
-                        }
+                        if (!cellText.includes(filter)) show = false;
+                    }
+                });
+                
+                // Check dropdown filters
+                document.querySelectorAll('#dataTableFilters .dropdown-filter').forEach(dropdown => {
+                    const colIndex = parseInt(dropdown.dataset.col);
+                    if (!cells[colIndex]) return;
+                    
+                    const checkedBoxes = dropdown.querySelectorAll('input[type="checkbox"]:checked');
+                    if (checkedBoxes.length > 0) {
+                        const selectedValues = Array.from(checkedBoxes).map(cb => cb.value);
+                        const cellValue = cells[colIndex].textContent.trim();
+                        if (!selectedValues.includes(cellValue)) show = false;
                     }
                 });
                 

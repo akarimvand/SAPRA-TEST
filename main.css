@@ -476,7 +476,7 @@ body {
     border-bottom: 2px solid #dee2e6;
 }
 
-.filter-row input, .filter-row select {
+.filter-row input {
     width: 100%;
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
@@ -485,14 +485,33 @@ body {
     background-color: #fff;
 }
 
-.filter-row select[multiple] {
-    height: 32px;
-    overflow-y: auto;
+.filter-row .dropdown-filter {
+    width: 100%;
 }
 
-.filter-row select[multiple]:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(24,119,242,0.25);
+.filter-row .dropdown-toggle {
+    width: 100%;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.filter-row .dropdown-item {
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.filter-row .dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.filter-row .dropdown-item input[type="checkbox"] {
+    width: auto;
+    margin: 0;
 }
 
 .table th, .table td {
