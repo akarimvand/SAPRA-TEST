@@ -1868,6 +1868,7 @@ chartInstances.overview = new Chart(overviewCtx, {
             const tbody = DOMElements.dataTableBody;
             const rows = tbody.querySelectorAll('tr');
             const filters = Array.from(document.querySelectorAll('#dataTableFilters input')).map(input => input.value.toLowerCase());
+            const numericColumns = [4, 5, 6, 7, 8]; // Total Items, Completed, Pending, Punch, Hold Point
             
             rows.forEach(row => {
                 const cells = row.querySelectorAll('th, td');
@@ -1876,8 +1877,19 @@ chartInstances.overview = new Chart(overviewCtx, {
                 filters.forEach((filter, i) => {
                     if (filter && cells[i]) {
                         const cellText = cells[i].textContent.toLowerCase();
-                        if (!cellText.includes(filter)) {
-                            show = false;
+                        
+                        if (numericColumns.includes(i)) {
+                            // Exact match for numeric columns
+                            const cellValue = cells[i].textContent.replace(/,/g, '').trim();
+                            const filterValue = filter.replace(/,/g, '').trim();
+                            if (cellValue !== filterValue) {
+                                show = false;
+                            }
+                        } else {
+                            // Substring match for text columns
+                            if (!cellText.includes(filter)) {
+                                show = false;
+                            }
                         }
                     }
                 });
