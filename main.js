@@ -303,7 +303,7 @@ const ICONS = {
                                     <div class="search-result-title fw-bold text-primary">${result.tagNo}</div>
                                     <div class="search-result-subtitle text-muted small">${result.description}</div>
                                     <div class="small text-secondary">
-                                        <span class="badge bg-light text-dark me-1 subsystem-badge" data-subsystem="${result.subsystem}" style="cursor: pointer;">${result.subsystem}</span>
+                                        <span class="badge bg-primary text-white me-1 subsystem-badge" data-subsystem="${result.subsystem}" style="cursor: pointer;">${result.subsystem}</span>
                                         <span class="badge bg-light text-dark me-1">${result.discipline}</span>
                                         <span class="badge bg-light text-dark">${result.typeCode}</span>
                                     </div>
@@ -349,12 +349,10 @@ const ICONS = {
                     // Add hover effect for subsystem badges
                     quickSearchResults.querySelectorAll('.subsystem-badge').forEach(badge => {
                         badge.addEventListener('mouseenter', () => {
-                            badge.classList.add('bg-primary', 'text-white');
-                            badge.classList.remove('bg-light', 'text-dark');
+                            badge.style.opacity = '0.8';
                         });
                         badge.addEventListener('mouseleave', () => {
-                            badge.classList.remove('bg-primary', 'text-white');
-                            badge.classList.add('bg-light', 'text-dark');
+                            badge.style.opacity = '1';
                         });
                     });
                 });
