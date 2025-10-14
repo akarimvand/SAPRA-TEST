@@ -1818,9 +1818,15 @@ chartInstances.overview = new Chart(overviewCtx, {
             ];
             DOMElements.dataTableHead.innerHTML = columns.map(col => `<th scope="col">${col.header}</th>`).join('');
             
-            // Add filter row
+            // Add filter row with multi-select for specific columns
             const filterRow = document.getElementById('dataTableFilters');
-            filterRow.innerHTML = columns.map((col, i) => `<th><input type="text" placeholder="Filter ${col.header}" data-col="${i}"></th>`).join('');
+            filterRow.innerHTML = columns.map((col, i) => {
+                if (col.header === 'Discipline' || col.header === 'Form' || col.header === 'Status') {
+                    return `<th><select multiple class="form-select form-select-sm" data-col="${i}" style="height: 32px; font-size: 0.75rem;"><option value="">All ${col.header}</option></select></th>`;
+                } else {
+                    return `<th><input type="text" placeholder="Filter ${col.header}" data-col="${i}"></th>`;
+                }
+            }).join('');
 
             const tableData = _generateTableDataForView(selectedView, processedData, aggregatedStats.totalItems === 0);
             window.currentTableData = tableData; // Store for export
@@ -1858,37 +1864,81 @@ chartInstances.overview = new Chart(overviewCtx, {
             }
             DOMElements.dataTableBody.innerHTML = bodyHTML;
             
+            // Populate multi-select options
+            const disciplineSelect = filterRow.querySelector('[data-col="3"]');
+            const formSelect = filterRow.querySelector('[data-col="2"]');
+            const statusSelect = filterRow.querySelector('[data-col="9"]');
+            
+            if (disciplineSelect && tableData.length > 0) {
+                const disciplines = [...new Set(tableData.map(row => row.discipline))].sort();
+                disciplineSelect.innerHTML = '<option value="">All Discipline</option>' + 
+                    disciplines.map(d => `<option value="${d}">${d}</option>`).join('');
+            }
+            
+            if (formSelect && tableData.length > 0) {
+                const forms = [...new Set(tableData.map(row => row.formStatus).filter(f => f))].sort();
+                formSelect.innerHTML = '<option value="">All Form</option>' + 
+                    forms.map(f => `<option value="${f}">${f}</option>`).join('');
+            }
+            
+            if (statusSelect && tableData.length > 0) {
+                const statuses = [...new Set(tableData.map(row => Math.round((row.completed / row.totalItems) * 100) + '%'))].sort((a,b) => parseInt(a) - parseInt(b));
+                statusSelect.innerHTML = '<option value="">All Status</option>' + 
+                    statuses.map(s => `<option value="${s}">${s}</option>`).join('');
+            }
+            
             // Add filter event listeners
             filterRow.querySelectorAll('input').forEach(input => {
                 input.addEventListener('input', filterMainTable);
+            });
+            filterRow.querySelectorAll('select').forEach(select => {
+                select.addEventListener('change', filterMainTable);
             });
         }
         
         function filterMainTable() {
             const tbody = DOMElements.dataTableBody;
             const rows = tbody.querySelectorAll('tr');
-            const filters = Array.from(document.querySelectorAll('#dataTableFilters input')).map(input => input.value.toLowerCase());
+            const filterInputs = document.querySelectorAll('#dataTableFilters input, #dataTableFilters select');
             const numericColumns = [4, 5, 6, 7, 8]; // Total Items, Completed, Pending, Punch, Hold Point
             
             rows.forEach(row => {
                 const cells = row.querySelectorAll('th, td');
                 let show = true;
                 
-                filters.forEach((filter, i) => {
-                    if (filter && cells[i]) {
-                        const cellText = cells[i].textContent.toLowerCase();
+                filterInputs.forEach((filterElement, i) => {
+                    if (!cells[i]) return;
+                    
+                    const cellText = cells[i].textContent.toLowerCase();
+                    
+                    if (filterElement.tagName === 'SELECT') {
+                        // Multi-select dropdown
+                        const selectedValues = Array.from(filterElement.selectedOptions)
+                            .map(option => option.value)
+                            .filter(value => value !== '');
                         
-                        if (numericColumns.includes(i)) {
-                            // Exact match for numeric columns
-                            const cellValue = cells[i].textContent.replace(/,/g, '').trim();
-                            const filterValue = filter.replace(/,/g, '').trim();
-                            if (cellValue !== filterValue) {
+                        if (selectedValues.length > 0) {
+                            const cellValue = cells[i].textContent.trim();
+                            if (!selectedValues.includes(cellValue)) {
                                 show = false;
                             }
-                        } else {
-                            // Substring match for text columns
-                            if (!cellText.includes(filter)) {
-                                show = false;
+                        }
+                    } else {
+                        // Text input
+                        const filter = filterElement.value.toLowerCase();
+                        if (filter) {
+                            if (numericColumns.includes(i)) {
+                                // Exact match for numeric columns
+                                const cellValue = cells[i].textContent.replace(/,/g, '').trim();
+                                const filterValue = filter.replace(/,/g, '').trim();
+                                if (cellValue !== filterValue) {
+                                    show = false;
+                                }
+                            } else {
+                                // Substring match for text columns
+                                if (!cellText.includes(filter)) {
+                                    show = false;
+                                }
                             }
                         }
                     }
