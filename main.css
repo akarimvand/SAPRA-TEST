@@ -554,7 +554,7 @@ body {
 }
 
 .table th:nth-child(3), .table td:nth-child(3) {
-    width: 1%;
+    width: 1.5%;
     white-space: nowrap;
     font-size: 0.8rem;
 }
@@ -567,8 +567,18 @@ body {
 
 .table th:nth-child(5), .table td:nth-child(5),
 .table th:nth-child(6), .table td:nth-child(6),
-.table th:nth-child(7), .table td:nth-child(7),
-.table th:nth-child(8), .table td:nth-child(8),
+.table th:nth-child(7), .table td:nth-child(7) {
+    width: 10.6%;
+    white-space: nowrap;
+    font-size: 0.8rem;
+}
+
+.table th:nth-child(8), .table td:nth-child(8) {
+    width: 10.1%;
+    white-space: nowrap;
+    font-size: 0.8rem;
+}
+
 .table th:nth-child(9), .table td:nth-child(9) {
     width: 10.6%;
     white-space: nowrap;
