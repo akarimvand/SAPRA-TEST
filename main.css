@@ -525,6 +525,15 @@ body {
     flex-shrink: 0;
 }
 
+.filter-row th:nth-child(3) .dropdown-filter {
+    width: 100%;
+}
+
+.filter-row th:nth-child(3) .dropdown-toggle {
+    width: 100%;
+    min-width: fit-content;
+}
+
 .table th, .table td {
     white-space: normal !important;
     word-wrap: break-word;
