@@ -485,6 +485,13 @@ body {
     background-color: #fff;
 }
 
+.filter-row input::placeholder {
+    font-size: 0.65rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .filter-row .dropdown-filter {
     width: 100%;
 }
