@@ -522,10 +522,11 @@ body {
 }
 
 .filter-row .dropdown-toggle {
-    white-space: normal;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     text-align: left;
+    font-size: 0.65rem;
 }
 
 .filter-row .clear-filter-btn {
