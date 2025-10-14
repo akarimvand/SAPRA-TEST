@@ -500,9 +500,9 @@ body {
 .filter-row .dropdown-item {
     padding: 0.25rem 0.5rem;
     cursor: pointer;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .filter-row .dropdown-item:hover {
@@ -512,6 +512,24 @@ body {
 .filter-row .dropdown-item input[type="checkbox"] {
     width: auto;
     margin: 0;
+}
+
+.filter-row .dropdown-toggle {
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    text-align: left;
+}
+
+.filter-row .clear-filter-btn {
+    flex-shrink: 0;
+}
+
+.table th, .table td {
+    white-space: normal !important;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 150px;
 }
 
 .table th, .table td {

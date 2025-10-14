@@ -1822,14 +1822,24 @@ chartInstances.overview = new Chart(overviewCtx, {
             const filterRow = document.getElementById('dataTableFilters');
             filterRow.innerHTML = columns.map((col, i) => {
                 if (col.header === 'Discipline' || col.header === 'Form' || col.header === 'Status') {
-                    return `<th><div class="dropdown-filter" data-col="${i}">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-truncate" type="button" data-bs-toggle="dropdown" style="font-size: 0.75rem; height: 32px;">
-                            All ${col.header}
+                    return `<th><div class="d-flex">
+                        <div class="dropdown-filter flex-grow-1" data-col="${i}">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-truncate" type="button" data-bs-toggle="dropdown" style="font-size: 0.75rem; height: 32px;">
+                                All ${col.header}
+                            </button>
+                            <ul class="dropdown-menu" style="max-height: 200px; overflow-y: auto; font-size: 0.75rem;"></ul>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger ms-1 clear-filter-btn" data-col="${i}" style="height: 32px; width: 32px; padding: 0;" title="Clear Filter">
+                            <i class="bi bi-x" style="font-size: 0.75rem;"></i>
                         </button>
-                        <ul class="dropdown-menu" style="max-height: 200px; overflow-y: auto; font-size: 0.75rem;"></ul>
                     </div></th>`;
                 } else {
-                    return `<th><input type="text" placeholder="Filter ${col.header}" data-col="${i}"></th>`;
+                    return `<th><div class="d-flex">
+                        <input type="text" placeholder="Filter ${col.header}" data-col="${i}" class="flex-grow-1">
+                        <button class="btn btn-sm btn-outline-danger ms-1 clear-filter-btn" data-col="${i}" style="height: 32px; width: 32px; padding: 0;" title="Clear Filter">
+                            <i class="bi bi-x" style="font-size: 0.75rem;"></i>
+                        </button>
+                    </div></th>`;
                 }
             }).join('');
 
@@ -1883,9 +1893,14 @@ chartInstances.overview = new Chart(overviewCtx, {
             
             if (formDropdown && tableData.length > 0) {
                 const forms = [...new Set(tableData.map(row => row.formStatus).filter(f => f))].sort();
-                formDropdown.innerHTML = forms.map(f => 
+                const emptyCount = tableData.filter(row => !row.formStatus).length;
+                let formOptions = forms.map(f => 
                     `<li><label class="dropdown-item"><input type="checkbox" value="${f}" class="me-2">${f}</label></li>`
-                ).join('');
+                );
+                if (emptyCount > 0) {
+                    formOptions.unshift(`<li><label class="dropdown-item"><input type="checkbox" value="EMPTY" class="me-2">Empty (${emptyCount})</label></li>`);
+                }
+                formDropdown.innerHTML = formOptions.join('');
             }
             
             if (statusDropdown && tableData.length > 0) {
@@ -1904,6 +1919,35 @@ chartInstances.overview = new Chart(overviewCtx, {
                     updateDropdownButton(checkbox);
                     filterMainTable();
                 });
+            });
+            
+            // Clear individual filter buttons
+            filterRow.querySelectorAll('.clear-filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const colIndex = btn.dataset.col;
+                    const input = filterRow.querySelector(`input[data-col="${colIndex}"]`);
+                    const dropdown = filterRow.querySelector(`.dropdown-filter[data-col="${colIndex}"]`);
+                    
+                    if (input) {
+                        input.value = '';
+                    }
+                    if (dropdown) {
+                        dropdown.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => cb.checked = false);
+                        updateDropdownButton(dropdown.querySelector('input[type="checkbox"]'));
+                    }
+                    filterMainTable();
+                });
+            });
+            
+            // Clear all filters button
+            document.getElementById('clearAllFiltersBtn').addEventListener('click', () => {
+                filterRow.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+                filterRow.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => cb.checked = false);
+                filterRow.querySelectorAll('.dropdown-filter').forEach(dropdown => {
+                    const firstCheckbox = dropdown.querySelector('input[type="checkbox"]');
+                    if (firstCheckbox) updateDropdownButton(firstCheckbox);
+                });
+                filterMainTable();
             });
         }
         
@@ -1958,7 +2002,15 @@ chartInstances.overview = new Chart(overviewCtx, {
                     if (checkedBoxes.length > 0) {
                         const selectedValues = Array.from(checkedBoxes).map(cb => cb.value);
                         const cellValue = cells[colIndex].textContent.trim();
-                        if (!selectedValues.includes(cellValue)) show = false;
+                        
+                        // Handle empty values for Form column
+                        if (selectedValues.includes('EMPTY') && !cellValue) {
+                            return; // Show this row
+                        }
+                        
+                        if (!selectedValues.includes(cellValue) && !(selectedValues.includes('EMPTY') && !cellValue)) {
+                            show = false;
+                        }
                     }
                 });
                 
