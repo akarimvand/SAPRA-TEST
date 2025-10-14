@@ -1821,25 +1821,15 @@ chartInstances.overview = new Chart(overviewCtx, {
             // Add filter row with dropdown for specific columns
             const filterRow = document.getElementById('dataTableFilters');
             filterRow.innerHTML = columns.map((col, i) => {
-                if (col.header === 'Discipline' || col.header === 'Form' || col.header === 'Status') {
-                    return `<th><div class="d-flex">
-                        <div class="dropdown-filter flex-grow-1" data-col="${i}">
-                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-truncate" type="button" data-bs-toggle="dropdown" style="font-size: 0.75rem; height: 32px;">
-                                All ${col.header}
-                            </button>
-                            <ul class="dropdown-menu" style="max-height: 200px; overflow-y: auto; font-size: 0.75rem;"></ul>
-                        </div>
-                        <button class="btn btn-sm btn-outline-danger ms-1 clear-filter-btn" data-col="${i}" style="height: 32px; width: 32px; padding: 0;" title="Clear Filter">
-                            <i class="bi bi-x" style="font-size: 0.75rem;"></i>
+                if (col.header === 'Discipline' || col.header === 'Form') {
+                    return `<th><div class="dropdown-filter" data-col="${i}">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-truncate" type="button" data-bs-toggle="dropdown" style="font-size: 0.75rem; height: 32px;">
+                            All ${col.header}
                         </button>
+                        <ul class="dropdown-menu" style="max-height: 200px; overflow-y: auto; font-size: 0.75rem;"></ul>
                     </div></th>`;
                 } else {
-                    return `<th><div class="d-flex">
-                        <input type="text" placeholder="Filter ${col.header}" data-col="${i}" class="flex-grow-1">
-                        <button class="btn btn-sm btn-outline-danger ms-1 clear-filter-btn" data-col="${i}" style="height: 32px; width: 32px; padding: 0;" title="Clear Filter">
-                            <i class="bi bi-x" style="font-size: 0.75rem;"></i>
-                        </button>
-                    </div></th>`;
+                    return `<th><input type="text" placeholder="Filter ${col.header}" data-col="${i}"></th>`;
                 }
             }).join('');
 
@@ -1882,32 +1872,27 @@ chartInstances.overview = new Chart(overviewCtx, {
             // Populate dropdown options
             const disciplineDropdown = filterRow.querySelector('[data-col="3"] .dropdown-menu');
             const formDropdown = filterRow.querySelector('[data-col="2"] .dropdown-menu');
-            const statusDropdown = filterRow.querySelector('[data-col="9"] .dropdown-menu');
             
             if (disciplineDropdown && tableData.length > 0) {
                 const disciplines = [...new Set(tableData.map(row => row.discipline))].sort();
-                disciplineDropdown.innerHTML = disciplines.map(d => 
+                let disciplineOptions = [`<li><label class="dropdown-item"><input type="checkbox" value="SHOW_ALL" class="me-2 show-all-checkbox">Show All</label></li>`];
+                disciplineOptions.push(...disciplines.map(d => 
                     `<li><label class="dropdown-item"><input type="checkbox" value="${d}" class="me-2">${d}</label></li>`
-                ).join('');
+                ));
+                disciplineDropdown.innerHTML = disciplineOptions.join('');
             }
             
             if (formDropdown && tableData.length > 0) {
                 const forms = [...new Set(tableData.map(row => row.formStatus).filter(f => f))].sort();
                 const emptyCount = tableData.filter(row => !row.formStatus).length;
-                let formOptions = forms.map(f => 
+                let formOptions = [`<li><label class="dropdown-item"><input type="checkbox" value="SHOW_ALL" class="me-2 show-all-checkbox">Show All</label></li>`];
+                formOptions.push(...forms.map(f => 
                     `<li><label class="dropdown-item"><input type="checkbox" value="${f}" class="me-2">${f}</label></li>`
-                );
+                ));
                 if (emptyCount > 0) {
-                    formOptions.unshift(`<li><label class="dropdown-item"><input type="checkbox" value="EMPTY" class="me-2">Empty (${emptyCount})</label></li>`);
+                    formOptions.push(`<li><label class="dropdown-item"><input type="checkbox" value="EMPTY" class="me-2">Empty (${emptyCount})</label></li>`);
                 }
                 formDropdown.innerHTML = formOptions.join('');
-            }
-            
-            if (statusDropdown && tableData.length > 0) {
-                const statuses = [...new Set(tableData.map(row => Math.round((row.completed / row.totalItems) * 100) + '%'))].sort((a,b) => parseInt(a) - parseInt(b));
-                statusDropdown.innerHTML = statuses.map(s => 
-                    `<li><label class="dropdown-item"><input type="checkbox" value="${s}" class="me-2">${s}</label></li>`
-                ).join('');
             }
             
             // Add filter event listeners
@@ -1916,25 +1901,22 @@ chartInstances.overview = new Chart(overviewCtx, {
             });
             filterRow.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(checkbox => {
                 checkbox.addEventListener('change', () => {
+                    // Handle Show All checkbox
+                    if (checkbox.classList.contains('show-all-checkbox')) {
+                        const dropdown = checkbox.closest('.dropdown-filter');
+                        const otherCheckboxes = dropdown.querySelectorAll('input[type="checkbox"]:not(.show-all-checkbox)');
+                        if (checkbox.checked) {
+                            otherCheckboxes.forEach(cb => cb.checked = false);
+                        }
+                    } else {
+                        // Uncheck Show All if any other checkbox is selected
+                        const dropdown = checkbox.closest('.dropdown-filter');
+                        const showAllCheckbox = dropdown.querySelector('.show-all-checkbox');
+                        if (checkbox.checked && showAllCheckbox) {
+                            showAllCheckbox.checked = false;
+                        }
+                    }
                     updateDropdownButton(checkbox);
-                    filterMainTable();
-                });
-            });
-            
-            // Clear individual filter buttons
-            filterRow.querySelectorAll('.clear-filter-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const colIndex = btn.dataset.col;
-                    const input = filterRow.querySelector(`input[data-col="${colIndex}"]`);
-                    const dropdown = filterRow.querySelector(`.dropdown-filter[data-col="${colIndex}"]`);
-                    
-                    if (input) {
-                        input.value = '';
-                    }
-                    if (dropdown) {
-                        dropdown.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => cb.checked = false);
-                        updateDropdownButton(dropdown.querySelector('input[type="checkbox"]'));
-                    }
                     filterMainTable();
                 });
             });
@@ -1998,7 +1980,7 @@ chartInstances.overview = new Chart(overviewCtx, {
                     const colIndex = parseInt(dropdown.dataset.col);
                     if (!cells[colIndex]) return;
                     
-                    const checkedBoxes = dropdown.querySelectorAll('input[type="checkbox"]:checked');
+                    const checkedBoxes = dropdown.querySelectorAll('input[type="checkbox"]:checked:not(.show-all-checkbox)');
                     if (checkedBoxes.length > 0) {
                         const selectedValues = Array.from(checkedBoxes).map(cb => cb.value);
                         const cellValue = cells[colIndex].textContent.trim();
