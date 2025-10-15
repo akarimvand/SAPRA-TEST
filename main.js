@@ -2296,7 +2296,7 @@ chartInstances.overview = new Chart(overviewCtx, {
         }
 
         function processActivitiesForTag(tagNo) {
-            const filtered = activitiesData.filter(a => a.Tag_No === tagNo);
+            const filtered = activitiesData.filter(a => a.Tag_No === tagNo).sort((a, b) => a.Form_Title.localeCompare(b.Form_Title));
             const list = document.getElementById('activitiesList');
             list.innerHTML = '';
             let doneCount = 0;
