@@ -799,7 +799,7 @@ body {
     white-space: nowrap !important;
 }
 
-/* افزایش عرض ستون Description */
+/* افزایش عرض ستون Description در مودال items */
 #itemDetailsModal .table th:nth-child(6),
 #itemDetailsModal .table td:nth-child(6) {
     width: 50% !important;
@@ -807,6 +807,23 @@ body {
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     max-width: 300px !important;
+}
+
+/* تنظیم عرض ستون Category در مودال punch */
+#itemDetailsModal .table th:nth-child(6),
+#itemDetailsModal .table td:nth-child(6) {
+    width: 5% !important;
+    white-space: nowrap !important;
+}
+
+/* افزایش عرض ستون Description در مودال punch */
+#itemDetailsModal .table th:nth-child(7),
+#itemDetailsModal .table td:nth-child(7) {
+    width: 45% !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 350px !important;
 }
 
 /* ===== ANIMATIONS ===== */
