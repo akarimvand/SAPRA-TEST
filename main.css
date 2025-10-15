@@ -794,7 +794,7 @@ body {
 /* تنظیم عرض ستون Subsystem در مودالها */
 #itemDetailsModal .table th:nth-child(2),
 #itemDetailsModal .table td:nth-child(2) {
-    width: auto !important;
+    width: 8% !important;
     min-width: fit-content !important;
     white-space: nowrap !important;
 }
@@ -802,9 +802,11 @@ body {
 /* افزایش عرض ستون Description */
 #itemDetailsModal .table th:nth-child(6),
 #itemDetailsModal .table td:nth-child(6) {
-    width: 40% !important;
-    white-space: normal !important;
-    word-wrap: break-word !important;
+    width: 50% !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 300px !important;
 }
 
 /* ===== ANIMATIONS ===== */
